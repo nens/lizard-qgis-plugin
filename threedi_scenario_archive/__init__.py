@@ -95,6 +95,7 @@ class ThreediScenarioArchivePlugin:
         self.plugin_settings.ensure_api_key_present()
         if not self.plugin_settings.api_key:
             return
-        print(self.downloader.find_scenarios(limit=100))
+        for res in self.downloader.find_scenarios(limit=100):
+            print(res)
         scenario_browser = ScenarioArchiveBrowser(self)
         scenario_browser.exec_()
