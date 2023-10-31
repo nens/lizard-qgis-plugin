@@ -1,9 +1,9 @@
 # 3Di Scenario Archive plugin for QGIS, licensed under GPLv2 or (at your option) any later version
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree
 
 import requests
-from qgis.core import QgsApplication, QgsAuthMethodConfig
+from qgis.core import QgsApplication, QgsAuthMethodConfig, QgsLayerTreeGroup, QgsLayerTreeLayer, QgsProject
 from qgis.PyQt.QtCore import QSettings
 
 
@@ -47,10 +47,10 @@ def set_api_key_auth_manager(api_key):
         settings.setValue("threedi_scenario_archive/authcfg", authcfg.id())
 
 
-def get_capabilities_layer_uris(wms_url, authcfg_id=None):
+def get_capabilities_layer_uris(wms_url):
     """Get WMS layer URIs."""
-    get_capabilities_xml = requests.get(wms_url).text
-    root = ET.fromstring(get_capabilities_xml)
+    get_capabilities_xml = requests.get(url=wms_url, auth=("__key__", get_api_key_auth_manager())).text
+    root = ElementTree.fromstring(get_capabilities_xml)
     namespace = root.tag.replace("WMS_Capabilities", "")
     layer_tag = f"{namespace}Layer"
     name_tag = f"{namespace}Name"
@@ -61,6 +61,7 @@ def get_capabilities_layer_uris(wms_url, authcfg_id=None):
     layer_section_elements = list(root.iter(layer_tag))
     layer_group, layer_elements = layer_section_elements[0], layer_section_elements[1:]
     wms_uris = []
+    authcfg_id = get_api_key_authcfg_id()
     authcfg_parameter = f"authcfg={authcfg_id}" if authcfg_id else None
     url_parameter = f"url={wms_url}"
     for layer_element in layer_elements:
@@ -90,3 +91,29 @@ def get_capabilities_layer_uris(wms_url, authcfg_id=None):
         layer_uri = "&".join(layer_wms_parameters)
         wms_uris.append((layer_title, layer_uri))
     return wms_uris
+
+
+def count_scenarios_with_name(lizard_url, name):
+    """Return scenario search results count."""
+    url = f"{lizard_url}scenarios/"
+    payload = {"name__icontains": name, "limit": 1}
+    r = requests.get(url=url, auth=("__key__", get_api_key_auth_manager()), params=payload)
+    r.raise_for_status()
+    response_json = r.json()
+    results_count = response_json["count"]
+    return results_count
+
+
+def create_tree_group(name, insert_at_top=True):
+    """Creating layer tree group with given name."""
+    root = QgsProject.instance().layerTreeRoot()
+    grp = QgsLayerTreeGroup(name)
+    root.insertChildNode(0 if insert_at_top else -1, grp)
+    return grp
+
+
+def add_layer_to_group(group, layer, insert_at_top=False):
+    """Adding layer to the specific group."""
+    project = QgsProject.instance()
+    project.addMapLayer(layer, False)
+    group.insertChildNode(0 if insert_at_top else -1, QgsLayerTreeLayer(layer))

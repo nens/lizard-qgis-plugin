@@ -8,6 +8,7 @@ from threedi_scenario_downloader import downloader
 
 from threedi_scenario_archive.communication import UICommunication
 from threedi_scenario_archive.deps.custom_imports import patch_wheel_imports
+from threedi_scenario_archive.utils import count_scenarios_with_name
 from threedi_scenario_archive.widgets.scenario_archive_browser import ScenarioArchiveBrowser
 from threedi_scenario_archive.widgets.settings import SettingsDialog
 
@@ -95,7 +96,5 @@ class ThreediScenarioArchivePlugin:
         self.plugin_settings.ensure_api_key_present()
         if not self.plugin_settings.api_key:
             return
-        for res in self.downloader.find_scenarios(limit=100):
-            print(res)
         scenario_browser = ScenarioArchiveBrowser(self)
         scenario_browser.exec_()
