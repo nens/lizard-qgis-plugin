@@ -6,7 +6,7 @@ import webbrowser
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QDialog, QInputDialog
 
-from threedi_scenario_archive.utils import get_api_key_authcfg, set_api_key_authcfg
+from threedi_scenario_archive.utils import get_api_key_auth_manager, set_api_key_auth_manager
 
 
 class SettingsDialog(QDialog):
@@ -28,8 +28,8 @@ class SettingsDialog(QDialog):
         self.setup_api_key_label()
 
     def patch_downloader(self):
-        self.downloader.get_api_key = get_api_key_authcfg
-        self.downloader.set_api_key = set_api_key_authcfg
+        self.downloader.get_api_key = get_api_key_auth_manager
+        self.downloader.set_api_key = set_api_key_auth_manager
 
     def setup_api_key_label(self):
         """Loading plugin settings from QSettings."""

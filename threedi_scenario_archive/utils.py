@@ -7,7 +7,47 @@ from qgis.core import QgsApplication, QgsAuthMethodConfig
 from qgis.PyQt.QtCore import QSettings
 
 
-def get_capabilities_layer_uris(wms_url):
+def get_api_key_authcfg_id():
+    """Getting 3Di Scenario Archive credentials ID from the QGIS Authorization Manager."""
+    settings = QSettings()
+    authcfg_id = settings.value("threedi_scenario_archive/authcfg", None)
+    return authcfg_id
+
+
+def get_api_key_auth_manager():
+    """Getting 3Di Scenario Archive credentials from the QGIS Authorization Manager."""
+    authcfg_id = get_api_key_authcfg_id()
+    auth_manager = QgsApplication.authManager()
+    authcfg = QgsAuthMethodConfig()
+    auth_manager.loadAuthenticationConfig(authcfg_id, authcfg, True)
+    api_key = authcfg.config("password")
+    return api_key
+
+
+def set_api_key_auth_manager(api_key):
+    """Setting 3Di Scenario Archive credentials in the QGIS Authorization Manager."""
+    username = "__key__"
+    settings = QSettings()
+    authcfg_id = settings.value("threedi_scenario_archive/authcfg", None)
+    authcfg = QgsAuthMethodConfig()
+    auth_manager = QgsApplication.authManager()
+    auth_manager.setMasterPassword()
+    auth_manager.loadAuthenticationConfig(authcfg_id, authcfg, True)
+
+    if authcfg.id():
+        authcfg.setConfig("username", username)
+        authcfg.setConfig("password", api_key)
+        auth_manager.updateAuthenticationConfig(authcfg)
+    else:
+        authcfg.setMethod("Basic")
+        authcfg.setName("Lizard Api Key")
+        authcfg.setConfig("username", username)
+        authcfg.setConfig("password", api_key)
+        auth_manager.storeAuthenticationConfig(authcfg)
+        settings.setValue("threedi_scenario_archive/authcfg", authcfg.id())
+
+
+def get_capabilities_layer_uris(wms_url, authcfg_id=None):
     """Get WMS layer URIs."""
     get_capabilities_xml = requests.get(wms_url).text
     root = ET.fromstring(get_capabilities_xml)
@@ -21,6 +61,7 @@ def get_capabilities_layer_uris(wms_url):
     layer_section_elements = list(root.iter(layer_tag))
     layer_group, layer_elements = layer_section_elements[0], layer_section_elements[1:]
     wms_uris = []
+    authcfg_parameter = f"authcfg={authcfg_id}" if authcfg_id else None
     url_parameter = f"url={wms_url}"
     for layer_element in layer_elements:
         layer_wms_parameters = [url_parameter]
@@ -43,41 +84,9 @@ def get_capabilities_layer_uris(wms_url):
             ]
         if layer_style_element is not None:
             layer_wms_parameters.append("styles")
+        if authcfg_parameter:
+            layer_wms_parameters.append(authcfg_parameter)
         layer_wms_parameters.sort()
         layer_uri = "&".join(layer_wms_parameters)
         wms_uris.append((layer_title, layer_uri))
     return wms_uris
-
-
-def get_api_key_authcfg():
-    """Getting 3Di Scenario Archive credentials from the QGIS Authorization Manager."""
-    settings = QSettings()
-    authcfg = settings.value("threedi_scenario_archive/authcfg", None)
-    auth_manager = QgsApplication.authManager()
-    cfg = QgsAuthMethodConfig()
-    auth_manager.loadAuthenticationConfig(authcfg, cfg, True)
-    api_key = cfg.config("password")
-    return api_key
-
-
-def set_api_key_authcfg(api_key):
-    """Setting 3Di Scenario Archive credentials in the QGIS Authorization Manager."""
-    username = "__key__"
-    settings = QSettings()
-    authcfg = settings.value("threedi_scenario_archive/authcfg", None)
-    cfg = QgsAuthMethodConfig()
-    auth_manager = QgsApplication.authManager()
-    auth_manager.setMasterPassword()
-    auth_manager.loadAuthenticationConfig(authcfg, cfg, True)
-
-    if cfg.id():
-        cfg.setConfig("username", username)
-        cfg.setConfig("password", api_key)
-        auth_manager.updateAuthenticationConfig(cfg)
-    else:
-        cfg.setMethod("Basic")
-        cfg.setName("Lizard Api Key")
-        cfg.setConfig("username", username)
-        cfg.setConfig("password", api_key)
-        auth_manager.storeAuthenticationConfig(cfg)
-        settings.setValue("threedi_scenario_archive/authcfg", cfg.id())
