@@ -7,6 +7,10 @@ from qgis.core import QgsApplication, QgsAuthMethodConfig, QgsLayerTreeGroup, Qg
 from qgis.PyQt.QtCore import QSettings
 
 
+class WMSServiceException(Exception):
+    pass
+
+
 def get_api_key_authcfg_id():
     """Getting 3Di Scenario Archive credentials ID from the QGIS Authorization Manager."""
     settings = QSettings()
@@ -59,6 +63,12 @@ def get_capabilities_layer_uris(wms_url):
     dimension_tag = f"{namespace}Dimension"
     style_tag = f"{namespace}Style"
     layer_section_elements = list(root.iter(layer_tag))
+    if not layer_section_elements:
+        exception_namespace = root.tag.replace("ServiceExceptionReport", "")
+        exception_details_tag = f"{exception_namespace}ServiceException"
+        exception_details = next(root.iter(exception_details_tag), "Exception details not found")
+        exception_details_text = exception_details.text.replace("detail:", "").strip()
+        raise WMSServiceException(exception_details_text)
     layer_group, layer_elements = layer_section_elements[0], layer_section_elements[1:]
     wms_uris = []
     authcfg_id = get_api_key_authcfg_id()

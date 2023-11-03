@@ -29,7 +29,7 @@ class ThreediScenarioArchivePlugin:
         self.toolbar = self.iface.addToolBar("ThreediScenarioArchive")
         self.toolbar.setObjectName("ThreediScenarioArchive")
         self.communication = UICommunication(self.iface, self.PLUGIN_NAME)
-        self.plugin_settings = SettingsDialog(self)
+        self.settings = SettingsDialog(self)
 
     def add_action(
         self,
@@ -88,13 +88,13 @@ class ThreediScenarioArchivePlugin:
 
     def show_settings(self):
         """Show plugin settings dialog."""
-        self.plugin_settings.show()
+        self.settings.show()
 
     def run(self):
         """Run method that loads and starts the plugin"""
         patch_wheel_imports()
-        self.plugin_settings.ensure_api_key_present()
-        if not self.plugin_settings.api_key:
+        self.settings.ensure_api_key_present()
+        if not self.settings.api_key:
             return
         scenario_browser = ScenarioArchiveBrowser(self)
         scenario_browser.exec_()

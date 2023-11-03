@@ -9,6 +9,7 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 
 from threedi_scenario_archive.utils import (
+    WMSServiceException,
     add_layer_to_group,
     count_scenarios_with_name,
     create_tree_group,
@@ -20,7 +21,6 @@ uicls, basecls = uic.loadUiType(os.path.join(base_dir, "ui", "scenario_archive_b
 
 
 class ScenarioArchiveBrowser(uicls, basecls):
-    LIZARD_WMS_URL = "https://demo.lizard.net/wms/"
     TABLE_LIMIT = 25
     NAME_COLUMN_IDX = 0
     UUID_COLUMN_IDX = 4
@@ -60,7 +60,7 @@ class ScenarioArchiveBrowser(uicls, basecls):
         """Fetching and listing matching scenarios."""
         try:
             searched_text = self.scenario_search_le.text()
-            matching_scenarios_count = count_scenarios_with_name(self.plugin.downloader.LIZARD_URL, searched_text)
+            matching_scenarios_count = count_scenarios_with_name(self.plugin.settings.api_url, searched_text)
             pages_nr = ceil(matching_scenarios_count / self.TABLE_LIMIT) or 1
             self.page_sbox.setMaximum(pages_nr)
             self.page_sbox.setSuffix(f" / {pages_nr}")
@@ -102,8 +102,17 @@ class ScenarioArchiveBrowser(uicls, basecls):
             scenario_uuid = scenario_uuid_item.text()
             scenario_name_item = self.scenario_model.item(current_row, self.NAME_COLUMN_IDX)
             scenario_name = scenario_name_item.text()
-            get_capabilities_url = f"{self.LIZARD_WMS_URL}scenario_{scenario_uuid}/?request=GetCapabilities"
+            get_capabilities_url = f"{self.plugin.settings.wms_url}scenario_{scenario_uuid}/?request=GetCapabilities"
+            layers_to_add = []
+            try:
+                for layer_name, layer_uri in get_capabilities_layer_uris(get_capabilities_url):
+                    layer = QgsRasterLayer(layer_uri, layer_name, wms_provider)
+                    layers_to_add.append(layer)
+            except WMSServiceException as e:
+                error_message = f"Loading of the requested scenario WMS layers failed due to following error:\n{e}"
+                self.plugin.communication.show_error(error_message)
+                return
             scenario_group = create_tree_group(scenario_name)
-            for layer_name, layer_uri in get_capabilities_layer_uris(get_capabilities_url):
-                layer = QgsRasterLayer(layer_uri, layer_name, wms_provider)
-                add_layer_to_group(scenario_group, layer)
+            for wms_layer in layers_to_add:
+                wms_layer.setCustomProperty("identify/format", "Text")
+                add_layer_to_group(scenario_group, wms_layer)
