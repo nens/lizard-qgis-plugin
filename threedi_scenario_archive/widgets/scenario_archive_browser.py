@@ -4,7 +4,7 @@ import os
 from math import ceil
 from operator import itemgetter
 
-from qgis.core import QgsRasterLayer
+from qgis.core import QgsRasterLayer, QgsRectangle
 from qgis.PyQt import uic
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 
@@ -116,6 +116,11 @@ class ScenarioArchiveBrowser(uicls, basecls):
                 self.plugin.communication.show_error(error_message)
                 return
             scenario_group = create_tree_group(scenario_name)
+            extent = QgsRectangle()
+            extent.setMinimal()
             for wms_layer in layers_to_add:
+                extent.combineExtentWith(wms_layer.extent())
                 wms_layer.setCustomProperty("identify/format", "Text")
                 add_layer_to_group(scenario_group, wms_layer)
+            self.plugin.iface.mapCanvas().setExtent(extent)
+            self.plugin.iface.mapCanvas().refresh()
