@@ -29,6 +29,7 @@ class SettingsDialog(QDialog):
         self.communication = plugin.communication
         base_url = QSettings().value("threedi_scenario_archive/base_url", self.DEFAULT_BASE_URL)
         self.base_url_le.setText(base_url)
+        self.change_base_url_pb.clicked.connect(self.change_base_url)
         self.set_pak_pb.clicked.connect(self.set_personal_api_key)
         self.obtain_pak_pb.clicked.connect(self.obtain_personal_api_key)
         self.ui.close_pb.clicked.connect(self.close)
