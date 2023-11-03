@@ -23,7 +23,7 @@ uicls, basecls = uic.loadUiType(os.path.join(base_dir, "ui", "scenario_archive_b
 class ScenarioArchiveBrowser(uicls, basecls):
     TABLE_LIMIT = 25
     NAME_COLUMN_IDX = 0
-    UUID_COLUMN_IDX = 4
+    UUID_COLUMN_IDX = 5
 
     def __init__(self, plugin, parent=None):
         super().__init__(parent)
@@ -66,18 +66,21 @@ class ScenarioArchiveBrowser(uicls, basecls):
             self.page_sbox.setSuffix(f" / {pages_nr}")
             self.scenario_model.clear()
             offset = (self.page_sbox.value() - 1) * self.TABLE_LIMIT
-            header = ["Scenario name", "Organisation", "User", "Created", "UUID"]
+            header = ["Scenario name", "Model name", "Organisation", "User", "Created", "UUID"]
             self.scenario_model.setHorizontalHeaderLabels(header)
             matching_scenarios = self.plugin.downloader.find_scenarios(
                 self.TABLE_LIMIT, offset=offset, name__icontains=searched_text
             )
             for scenario in sorted(matching_scenarios, key=itemgetter("created"), reverse=True):
                 name_item = QStandardItem(scenario["name"])
+                model_name_item = QStandardItem(scenario["model_name"])
                 organisation_item = QStandardItem(scenario["organisation"]["name"])
                 user_item = QStandardItem(scenario["supplier"])
                 created_item = QStandardItem(scenario["created"].split("T")[0])
                 uuid_item = QStandardItem(scenario["uuid"])
-                self.scenario_model.appendRow([name_item, organisation_item, user_item, created_item, uuid_item])
+                self.scenario_model.appendRow(
+                    [name_item, model_name_item, organisation_item, user_item, created_item, uuid_item]
+                )
             for i in range(len(header)):
                 self.scenario_tv.resizeColumnToContents(i)
         except Exception as e:
