@@ -122,5 +122,6 @@ class ScenarioArchiveBrowser(uicls, basecls):
                 extent.combineExtentWith(wms_layer.extent())
                 wms_layer.setCustomProperty("identify/format", "Text")
                 add_layer_to_group(scenario_group, wms_layer)
-            self.plugin.iface.mapCanvas().setExtent(extent)
-            self.plugin.iface.mapCanvas().refresh()
+            map_canvas = self.plugin.iface.mapCanvas()
+            map_canvas.setExtent(extent)
+            map_canvas.refresh()

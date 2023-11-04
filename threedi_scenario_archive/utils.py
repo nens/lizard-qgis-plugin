@@ -125,5 +125,8 @@ def create_tree_group(name, insert_at_top=True):
 def add_layer_to_group(group, layer, insert_at_top=False):
     """Adding layer to the specific group."""
     project = QgsProject.instance()
+    root = project.layerTreeRoot()
     project.addMapLayer(layer, False)
     group.insertChildNode(0 if insert_at_top else -1, QgsLayerTreeLayer(layer))
+    layer_node = root.findLayer(layer.id())
+    layer_node.setExpanded(False)
