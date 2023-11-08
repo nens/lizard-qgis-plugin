@@ -1,4 +1,4 @@
-# 3Di Scenario Archive plugin for QGIS, licensed under GPLv2 or (at your option) any later version
+# Lizard plugin for QGIS, licensed under GPLv2 or (at your option) any later version
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 from xml.etree import ElementTree
 
@@ -6,20 +6,23 @@ import requests
 from qgis.core import QgsApplication, QgsAuthMethodConfig, QgsLayerTreeGroup, QgsLayerTreeLayer, QgsProject
 from qgis.PyQt.QtCore import QSettings
 
+LIZARD_SETTINGS_ENTRY = "lizard_qgis_plugin"
+LIZARD_AUTHCFG_ENTRY = f"{LIZARD_SETTINGS_ENTRY}/authcfg"
+
 
 class WMSServiceException(Exception):
     pass
 
 
 def get_api_key_authcfg_id():
-    """Getting 3Di Scenario Archive credentials ID from the QGIS Authorization Manager."""
+    """Getting Lizard credentials ID from the QGIS Authorization Manager."""
     settings = QSettings()
-    authcfg_id = settings.value("threedi_scenario_archive/authcfg", None)
+    authcfg_id = settings.value(LIZARD_AUTHCFG_ENTRY, None)
     return authcfg_id
 
 
 def get_api_key_auth_manager():
-    """Getting 3Di Scenario Archive credentials from the QGIS Authorization Manager."""
+    """Getting Lizard credentials from the QGIS Authorization Manager."""
     authcfg_id = get_api_key_authcfg_id()
     auth_manager = QgsApplication.authManager()
     authcfg = QgsAuthMethodConfig()
@@ -29,10 +32,10 @@ def get_api_key_auth_manager():
 
 
 def set_api_key_auth_manager(api_key):
-    """Setting 3Di Scenario Archive credentials in the QGIS Authorization Manager."""
+    """Setting Lizard credentials in the QGIS Authorization Manager."""
     username = "__key__"
     settings = QSettings()
-    authcfg_id = settings.value("threedi_scenario_archive/authcfg", None)
+    authcfg_id = settings.value(LIZARD_AUTHCFG_ENTRY, None)
     authcfg = QgsAuthMethodConfig()
     auth_manager = QgsApplication.authManager()
     auth_manager.setMasterPassword()
@@ -47,7 +50,7 @@ def set_api_key_auth_manager(api_key):
         authcfg.setConfig("username", username)
         authcfg.setConfig("password", api_key)
         auth_manager.storeAuthenticationConfig(authcfg)
-        settings.setValue("threedi_scenario_archive/authcfg", authcfg.id())
+        settings.setValue(LIZARD_AUTHCFG_ENTRY, authcfg.id())
 
 
 def get_capabilities_layer_uris(wms_url):

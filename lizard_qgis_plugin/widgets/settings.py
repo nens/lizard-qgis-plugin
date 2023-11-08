@@ -1,4 +1,4 @@
-# 3Di Scenario Archive plugin for QGIS, licensed under GPLv2 or (at your option) any later version
+# Lizard plugin for QGIS, licensed under GPLv2 or (at your option) any later version
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 import os
 import webbrowser
@@ -7,7 +7,7 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtCore import QSettings
 from qgis.PyQt.QtWidgets import QDialog, QInputDialog
 
-from threedi_scenario_archive.utils import get_api_key_auth_manager, set_api_key_auth_manager
+from lizard_qgis_plugin.utils import LIZARD_SETTINGS_ENTRY, get_api_key_auth_manager, set_api_key_auth_manager
 
 
 class SettingsDialog(QDialog):
@@ -27,8 +27,8 @@ class SettingsDialog(QDialog):
         self.iface = plugin.iface
         self.downloader = plugin.downloader
         self.communication = plugin.communication
-        base_url = QSettings().value("threedi_scenario_archive/base_url", self.DEFAULT_BASE_URL)
-        self.base_url_le.setText(base_url)
+        self.base_url_settings_entry = f"{LIZARD_SETTINGS_ENTRY}/base_url"
+        self.base_url_le.setText(QSettings().value(self.base_url_settings_entry, self.DEFAULT_BASE_URL))
         self.change_base_url_pb.clicked.connect(self.change_base_url)
         self.set_pak_pb.clicked.connect(self.set_personal_api_key)
         self.obtain_pak_pb.clicked.connect(self.obtain_personal_api_key)
@@ -97,7 +97,7 @@ class SettingsDialog(QDialog):
         base_url = base_url.strip("/")
         if base_url.startswith(self.HTTPS_PREFIX):
             base_url = base_url[len(self.HTTPS_PREFIX) :]
-        QSettings().setValue("threedi_scenario_archive/base_url", base_url)
+        QSettings().setValue(self.base_url_settings_entry, base_url)
         self.base_url_le.setText(base_url)
         self.update_lizard_url()
 

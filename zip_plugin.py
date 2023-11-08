@@ -1,4 +1,4 @@
-# 3Di Scenario Archive plugin for QGIS, licensed under GPLv2 or (at your option) any later version
+# Lizard plugin for QGIS, licensed under GPLv2 or (at your option) any later version
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 import os
 import re
@@ -19,7 +19,7 @@ def get_version(directory):
 if __name__ == "__main__":
     print("ZIPPING PLUGIN STARTED")
     this_dir = os.path.dirname(os.path.realpath(__file__))
-    plugin_dirname = "threedi_scenario_archive"
+    plugin_dirname = "lizard_qgis_plugin"
     plugin_path = os.path.join(this_dir, plugin_dirname)
     plugin_version = get_version(plugin_path)
     zip_filename = f"{plugin_dirname}.{plugin_version}"

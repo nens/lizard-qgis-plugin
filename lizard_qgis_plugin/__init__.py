@@ -1,26 +1,27 @@
-# 3Di Scenario Archive plugin for QGIS, licensed under GPLv2 or (at your option) any later version
+# Lizard plugin for QGIS, licensed under GPLv2 or (at your option) any later version
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 import os.path
 
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
-from threedi_scenario_archive.communication import UICommunication
-from threedi_scenario_archive.deps.custom_imports import patch_wheel_imports
-from threedi_scenario_archive.utils import count_scenarios_with_name
-from threedi_scenario_archive.widgets.scenario_archive_browser import ScenarioArchiveBrowser
-from threedi_scenario_archive.widgets.settings import SettingsDialog
+from lizard_qgis_plugin.communication import UICommunication
+from lizard_qgis_plugin.deps.custom_imports import patch_wheel_imports
+from lizard_qgis_plugin.utils import count_scenarios_with_name
+from lizard_qgis_plugin.widgets.scenario_archive_browser import ScenarioArchiveBrowser
+from lizard_qgis_plugin.widgets.settings import SettingsDialog
 
 patch_wheel_imports()
 from threedi_scenario_downloader import downloader
 
 
 def classFactory(iface):
-    return ThreediScenarioArchivePlugin(iface)
+    return ThreediLizardPlugin(iface)
 
 
-class ThreediScenarioArchivePlugin:
-    PLUGIN_NAME = "3Di Scenario Archive"
+class ThreediLizardPlugin:
+    PLUGIN_NAME = "Lizard"
+    PLUGIN_ENTRY_NAME = "ThreediLizard"
 
     def __init__(self, iface):
         self.iface = iface
@@ -28,8 +29,8 @@ class ThreediScenarioArchivePlugin:
         self.downloader = downloader
         self.actions = []
         self.menu = self.PLUGIN_NAME
-        self.toolbar = self.iface.addToolBar("ThreediScenarioArchive")
-        self.toolbar.setObjectName("ThreediScenarioArchive")
+        self.toolbar = self.iface.addToolBar(self.PLUGIN_ENTRY_NAME)
+        self.toolbar.setObjectName(self.PLUGIN_ENTRY_NAME)
         self.communication = UICommunication(self.iface, self.PLUGIN_NAME)
         self.settings = SettingsDialog(self)
 

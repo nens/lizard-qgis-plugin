@@ -4,10 +4,10 @@
 # Mandatory items:
 
 [general]
-name=3Di Scenario Archive
+name=Lizard
 qgisMinimumVersion=3.22
 qgisMaximumVersion=3.99
-description=3Di Scenario Archive
+description=Lizard QGIS plugin
 version=0.1.0
 author=Lutra Consulting for 3Di Water Management
 email=servicedesk@nelen-schuurmans.nl

@@ -1,4 +1,4 @@
-# 3Di Scenario Archive plugin for QGIS, licensed under GPLv2 or (at your option) any later version
+# Lizard plugin for QGIS, licensed under GPLv2 or (at your option) any later version
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 import os
 from math import ceil
@@ -8,7 +8,7 @@ from qgis.core import QgsRasterLayer, QgsRectangle
 from qgis.PyQt import uic
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 
-from threedi_scenario_archive.utils import (
+from lizard_qgis_plugin.utils import (
     WMSServiceException,
     add_layer_to_group,
     count_scenarios_with_name,

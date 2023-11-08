@@ -1,4 +1,4 @@
-# 3Di Scenario Archive plugin for QGIS, licensed under GPLv2 or (at your option) any later version
+# Lizard plugin for QGIS, licensed under GPLv2 or (at your option) any later version
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 from qgis.core import Qgis, QgsMessageLog
 from qgis.PyQt.QtCore import Qt

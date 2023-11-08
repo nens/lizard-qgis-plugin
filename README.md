@@ -1,2 +1,2 @@
-# threedi-scenario-archive
-A QGIS 3Di Scenario Archive plugin
+# lizard-qgis-plugin
+A QGIS Lizard plugin
