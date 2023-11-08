@@ -14,13 +14,13 @@ email=servicedesk@nelen-schuurmans.nl
 
 about=Any simulations older than 7 days are not available for download from the 3Di API.
 
-    Customers with a Lizard subscription are able to work with their 3Di scenarios stored in Lizard using 3Di Scenario Archive plugin.
+    Customers with a Lizard subscription are able to work with their 3Di scenarios stored in the Lizard, using dedicated QGIS plugin.
 
     For questions on 3Di or the use of this plugin please contact us via
     servicedesk@nelen-schuurmans.nl
 
-tracker=https://github.com/nens/threedi-scenario-archive/issues
-repository=https://github.com/nens/threedi-scenario-archive
+tracker=https://github.com/nens/lizard-qgis-plugin/issues
+repository=https://github.com/nens/lizard-qgis-plugin
 # End of mandatory metadata
 
 # Recommended items:
@@ -31,7 +31,7 @@ changelog=<p>
  <p>0.1.0 Initial release
 
 # Tags are comma separated with spaces allowed
-tags=3Di, archive, simulation, flood modelling, flood, river, water, scenario
+tags=3Di, archive, flood, flood modelling, lizard, river, scenario, simulation, water
 
 homepage=https://3diwatermanagement.com/
 category=Plugins
