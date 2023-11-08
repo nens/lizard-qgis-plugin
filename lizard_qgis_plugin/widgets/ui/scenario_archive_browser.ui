@@ -196,7 +196,7 @@
            </font>
           </property>
           <property name="text">
-           <string>Clear message box</string>
+           <string>Clear feedback</string>
           </property>
          </widget>
         </item>
