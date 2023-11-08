@@ -37,7 +37,6 @@ def set_api_key_auth_manager(api_key):
     auth_manager = QgsApplication.authManager()
     auth_manager.setMasterPassword()
     auth_manager.loadAuthenticationConfig(authcfg_id, authcfg, True)
-
     if authcfg.id():
         authcfg.setConfig("username", username)
         authcfg.setConfig("password", api_key)
@@ -53,7 +52,8 @@ def set_api_key_auth_manager(api_key):
 
 def get_capabilities_layer_uris(wms_url):
     """Get WMS layer URIs."""
-    get_capabilities_xml = requests.get(url=wms_url, auth=("__key__", get_api_key_auth_manager())).text
+    get_capabilities_response = requests.get(url=wms_url, auth=("__key__", get_api_key_auth_manager()))
+    get_capabilities_xml = get_capabilities_response.text
     root = ElementTree.fromstring(get_capabilities_xml)
     namespace = root.tag.replace("WMS_Capabilities", "")
     layer_tag = f"{namespace}Layer"
