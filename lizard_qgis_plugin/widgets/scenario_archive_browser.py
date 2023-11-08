@@ -4,9 +4,10 @@ import os
 from math import ceil
 from operator import itemgetter
 
-from qgis.core import QgsRasterLayer, QgsRectangle
+from qgis.core import Qgis, QgsRasterLayer, QgsRectangle
 from qgis.PyQt import uic
-from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
 
 from lizard_qgis_plugin.utils import (
     WMSServiceException,
@@ -31,14 +32,30 @@ class ScenarioArchiveBrowser(uicls, basecls):
         self.plugin = plugin
         self.scenario_model = QStandardItemModel()
         self.scenario_tv.setModel(self.scenario_model)
+        self.feedback_model = QStandardItemModel()
+        self.feedback_lv.setModel(self.feedback_model)
         self.pb_prev_page.clicked.connect(self.previous_scenarios)
         self.pb_next_page.clicked.connect(self.next_scenarios)
         self.page_sbox.valueChanged.connect(self.get_scenarios)
         self.pb_add_wms.clicked.connect(self.load_as_wms_layers)
         self.pb_close.clicked.connect(self.close)
+        self.pb_clear_feedback.clicked.connect(self.feedback_model.clear)
         self.scenario_search_le.returnPressed.connect(self.search_for_scenarios)
         self.scenario_tv.selectionModel().selectionChanged.connect(self.toggle_add_wms)
         self.get_scenarios()
+
+    def log_feedback(self, feedback_message, level=Qgis.Info):
+        """Log messages in the feedback list view."""
+        if level == Qgis.Info:
+            color = QColor(Qt.darkGreen)
+        elif level == Qgis.Warning:
+            color = QColor(Qt.darkYellow)
+        else:
+            color = QColor(Qt.red)
+        brush = QBrush(color)
+        feedback_item = QStandardItem(feedback_message)
+        feedback_item.setForeground(brush)
+        self.feedback_model.appendRow([feedback_item])
 
     def toggle_add_wms(self):
         """Toggle add as WMS button if any scenario is selected."""
@@ -113,6 +130,7 @@ class ScenarioArchiveBrowser(uicls, basecls):
                     layers_to_add.append(layer)
             except WMSServiceException as e:
                 error_message = f"Loading of the requested scenario WMS layers failed due to following error:\n{e}"
+                self.log_feedback(error_message, Qgis.Critical)
                 self.plugin.communication.show_error(error_message)
                 return
             scenario_group = create_tree_group(scenario_name)
@@ -125,3 +143,4 @@ class ScenarioArchiveBrowser(uicls, basecls):
             map_canvas = self.plugin.iface.mapCanvas()
             map_canvas.setExtent(extent)
             map_canvas.refresh()
+            self.log_feedback(f"WMS layers for scenario '{scenario_name}' added to the project.")
