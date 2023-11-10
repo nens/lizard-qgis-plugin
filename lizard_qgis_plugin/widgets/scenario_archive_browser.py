@@ -6,8 +6,9 @@ from operator import itemgetter
 
 from qgis.core import Qgis, QgsRasterLayer, QgsRectangle
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
+from qgis.PyQt.QtWidgets import QCheckBox
 
 from lizard_qgis_plugin.utils import (
     WMSServiceException,
@@ -32,17 +33,23 @@ class ScenarioArchiveBrowser(uicls, basecls):
         self.plugin = plugin
         self.scenario_model = QStandardItemModel()
         self.scenario_tv.setModel(self.scenario_model)
+        self.scenario_results_model = QStandardItemModel()
+        self.scenario_results_tv.setModel(self.scenario_results_model)
         self.feedback_model = QStandardItemModel()
         self.feedback_lv.setModel(self.feedback_model)
         self.pb_prev_page.clicked.connect(self.previous_scenarios)
         self.pb_next_page.clicked.connect(self.next_scenarios)
         self.page_sbox.valueChanged.connect(self.get_scenarios)
         self.pb_add_wms.clicked.connect(self.load_as_wms_layers)
-        self.pb_close.clicked.connect(self.close)
+        self.pb_show_files.clicked.connect(self.fetch_results)
+        self.pb_download.clicked.connect(self.download_results)
         self.pb_clear_feedback.clicked.connect(self.feedback_model.clear)
+        self.pb_close.clicked.connect(self.close)
         self.scenario_search_le.returnPressed.connect(self.search_for_scenarios)
         self.scenario_tv.selectionModel().selectionChanged.connect(self.toggle_add_wms)
         self.get_scenarios()
+        self.last_scenario_results = {}
+        self.resize(QSize(1600, 850))
 
     def log_feedback(self, feedback_message, level=Qgis.Info):
         """Log messages in the feedback list view."""
@@ -59,22 +66,28 @@ class ScenarioArchiveBrowser(uicls, basecls):
 
     def toggle_add_wms(self):
         """Toggle add as WMS button if any scenario is selected."""
+        self.scenario_results_model.clear()
+        self.last_scenario_results.clear()
         selection_model = self.scenario_tv.selectionModel()
         if selection_model.hasSelection():
             self.pb_add_wms.setEnabled(True)
+            self.pb_show_files.setEnabled(True)
+            self.pb_download.setEnabled(True)
         else:
             self.pb_add_wms.setDisabled(True)
+            self.pb_show_files.setDisabled(True)
+            self.pb_dwonload.setDisabled(True)
 
     def previous_scenarios(self):
-        """Moving to the previous matching scenarios page."""
+        """Move to the previous matching scenarios page."""
         self.page_sbox.setValue(self.page_sbox.value() - 1)
 
     def next_scenarios(self):
-        """Moving to the next matching scenarios page."""
+        """Move to the next matching scenarios page."""
         self.page_sbox.setValue(self.page_sbox.value() + 1)
 
     def get_scenarios(self):
-        """Fetching and listing matching scenarios."""
+        """Fetch and list matching scenarios."""
         try:
             searched_text = self.scenario_search_le.text()
             matching_scenarios_count = count_scenarios_with_name(self.plugin.settings.api_url, searched_text)
@@ -104,6 +117,45 @@ class ScenarioArchiveBrowser(uicls, basecls):
             self.close()
             error_msg = f"Error: {e}"
             self.plugin.communication.show_error(error_msg)
+
+    def fetch_results(self):
+        """Fetch and show selected available scenario result files."""
+        index = self.scenario_tv.currentIndex()
+        if not index.isValid():
+            return
+        current_row = index.row()
+        scenario_uuid_item = self.scenario_model.item(current_row, self.UUID_COLUMN_IDX)
+        scenario_uuid = scenario_uuid_item.text()
+        scenario_results = self.plugin.downloader.get_scenario_instance_results(scenario_uuid)
+        self.scenario_results_model.clear()
+        self.last_scenario_results.clear()
+        header = ["Item", "File name"]
+        self.scenario_results_model.setHorizontalHeaderLabels(header)
+        for row_number, result in enumerate(scenario_results, start=0):
+            result_id = result["id"]
+            result_name = result["name"]
+            result_attachment_url = result["attachment_url"]
+            result_raster = result["raster"]
+            if result_raster:
+                result_filename = result_name.lower().replace("(timeseries)", "").strip().replace(" ", "_")
+            else:
+                result_filename = result_attachment_url.rsplit("/", 1)[-1]
+            result_checkbox = QCheckBox(result_name)
+            result_checkbox.setChecked(True)
+            results_checkbox_item = QStandardItem("")
+            result_filename_item = QStandardItem(result_filename)
+            self.scenario_results_model.appendRow([results_checkbox_item, result_filename_item])
+            self.scenario_results_tv.setIndexWidget(self.scenario_results_model.index(row_number, 0), result_checkbox)
+            result["checkbox"] = result_checkbox
+            self.last_scenario_results[result_id] = result
+        for i in range(len(header)):
+            self.scenario_results_tv.resizeColumnToContents(i)
+
+    def download_results(self):
+        """Download selected (checked) result files."""
+        index = self.scenario_tv.currentIndex()
+        if not index.isValid():
+            return
 
     def search_for_scenarios(self):
         """Method used for searching scenarios with text typed withing search bar."""
