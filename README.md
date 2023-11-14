@@ -8,7 +8,7 @@ A QGIS Lizard plugin
 First make sure the version in the metadata is set correctly.
 
     $ python3 zip_plugin.py
-	$ ARTIFACTS_KEY=abcdefg ./upload-artifact.sh
+    $ ARTIFACTS_KEY=abcdefg ./upload-artifact.sh
 
 The `ARTIFACTS_KEY` environment variable is something you have to set manually
 (i.e. Reinout probably mailed it to you). Later on we can set up an automatic
