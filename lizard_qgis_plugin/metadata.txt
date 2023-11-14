@@ -9,12 +9,14 @@ qgisMinimumVersion=3.22
 qgisMaximumVersion=3.99
 description=Lizard QGIS plugin
 version=0.1.0
-author=Lutra Consulting for 3Di Water Management
+author=Nelen & Schuurmans
 email=servicedesk@nelen-schuurmans.nl
 
-about=Any simulations older than 7 days are not available for download from the 3Di API.
+about=Interact with Lizard from QGIS. 
 
-    Customers with a Lizard subscription are able to work with their 3Di scenarios stored in the Lizard, using dedicated QGIS plugin.
+    Browse for simulation results and add them as WMS layers. Navigate through temporal WMS layers using the QGIS Temporal Controller.
+
+    A Lizard subscription is required to use this plugin. See https://www.lizard.net.
 
     For questions on 3Di or the use of this plugin please contact us via
     servicedesk@nelen-schuurmans.nl
