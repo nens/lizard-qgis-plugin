@@ -23,7 +23,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>3Di Scenario Archive settings</string>
+   <string>Lizard settings</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="2" column="5">
