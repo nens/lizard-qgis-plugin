@@ -111,7 +111,7 @@ class SettingsDialog(QDialog):
 
     def obtain_personal_api_key(self):
         """Open website where user can get his Personal API Key."""
-        webbrowser.open(f"{self.management_url}/personal_api_keys/")
+        webbrowser.open(f"{self.management_url}personal_api_keys/")
 
     def set_personal_api_key_label(self, personal_api_key_available):
         """Setting Personal API Key label text."""
