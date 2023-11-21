@@ -81,7 +81,6 @@ class ScenarioItemsDownloader(QRunnable):
                 if processed:
                     continue
                 task_status = self.downloader.get_task_status(task_id)
-                print(task_id, task_status)
                 if task_status in success_statuses:
                     processed_tasks[task_id] = True
                 elif task_status in in_progress_statuses:
@@ -89,7 +88,6 @@ class ScenarioItemsDownloader(QRunnable):
                 else:
                     error_msg = f"Task {task_id} failed, status was: {task_status}"
                     raise ScenarioDownloadError(error_msg)
-            print(processed_tasks)
             time.sleep(5)
         # Download tasks files
         for task_id, raster_result in task_raster_results.items():
