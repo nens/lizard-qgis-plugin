@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>500</width>
-    <height>125</height>
+    <height>250</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>500</width>
-    <height>100</height>
+    <height>250</height>
    </size>
   </property>
   <property name="font">
@@ -26,6 +26,13 @@
    <string>Lizard settings</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <item row="2" column="1">
+    <widget class="QLabel" name="label_5">
+     <property name="text">
+      <string>API Key:</string>
+     </property>
+    </widget>
+   </item>
    <item row="2" column="5">
     <widget class="QPushButton" name="obtain_pak_pb">
      <property name="text">
@@ -40,17 +47,10 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="5">
-    <widget class="QPushButton" name="close_pb">
+   <item row="1" column="5">
+    <widget class="QPushButton" name="change_base_url_pb">
      <property name="text">
-      <string>Close</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="1">
-    <widget class="QLabel" name="label_5">
-     <property name="text">
-      <string>API Key:</string>
+      <string>Change...</string>
      </property>
     </widget>
    </item>
@@ -64,13 +64,6 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="5">
-    <widget class="QPushButton" name="change_base_url_pb">
-     <property name="text">
-      <string>Change...</string>
-     </property>
-    </widget>
-   </item>
    <item row="1" column="1">
     <widget class="QLabel" name="label">
      <property name="text">
@@ -78,7 +71,7 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="3" colspan="2">
+   <item row="1" column="2" colspan="3">
     <widget class="QLineEdit" name="base_url_le">
      <property name="text">
       <string/>
@@ -91,8 +84,82 @@
      </property>
     </widget>
    </item>
+   <item row="5" column="5">
+    <widget class="QPushButton" name="close_pb">
+     <property name="text">
+      <string>Close</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1" colspan="5">
+    <widget class="QGroupBox" name="download_grp">
+     <property name="title">
+      <string>Download settings</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>No Data value:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QgsSpinBox" name="no_data_sb">
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="minimum">
+         <number>-1000000</number>
+        </property>
+        <property name="maximum">
+         <number>1000000</number>
+        </property>
+        <property name="value">
+         <number>-9999</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Raster CRS:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QgsProjectionSelectionWidget" name="crs_widget"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="4" column="5">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsProjectionSelectionWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsprojectionselectionwidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qgsspinbox.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

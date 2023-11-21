@@ -1,5 +1,7 @@
 # Lizard plugin for QGIS, licensed under GPLv2 or (at your option) any later version
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
+import os
+import uuid
 from xml.etree import ElementTree
 
 import requests
@@ -133,3 +135,12 @@ def add_layer_to_group(group, layer, insert_at_top=False):
     group.insertChildNode(0 if insert_at_top else -1, QgsLayerTreeLayer(layer))
     layer_node = root.findLayer(layer.id())
     layer_node.setExpanded(False)
+
+
+def try_to_write(working_dir):
+    """Try to write and remove an empty text file into given location."""
+    test_filename = f"{uuid.uuid4()}.txt"
+    test_file_path = os.path.join(working_dir, test_filename)
+    with open(test_file_path, "w") as test_file:
+        test_file.write("")
+    os.remove(test_file_path)
