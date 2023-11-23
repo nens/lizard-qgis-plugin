@@ -2,12 +2,13 @@
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 import os
 import time
+from collections import defaultdict
 
 import requests
 from qgis.PyQt.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
 from threedi_mi_utils import bypass_max_path_limit
 
-from lizard_qgis_plugin.utils import create_raster_tasks, split_scenario_extent
+from lizard_qgis_plugin.utils import build_vrt, create_raster_tasks, split_scenario_extent
 
 
 class ScenarioDownloadError(Exception):
@@ -108,15 +109,25 @@ class ScenarioItemsDownloader(QRunnable):
                     raise ScenarioDownloadError(error_msg)
             time.sleep(self.TASK_CHECK_SLEEP_TIME)
         # Download tasks files
-        visited_raster_codes = set()
+        rasters_per_code = defaultdict(list)
         for task_id, raster_result in task_raster_results.items():
             raster_filename = raster_result["filename"]
             raster_code = raster_result["code"]
             progress_msg = f"Downloading '{raster_filename}' (scenario ID: '{self.scenario_id}')..."
-            self.report_progress(progress_msg, increase_current_step=raster_code not in visited_raster_codes)
+            self.report_progress(progress_msg, increase_current_step=raster_code not in rasters_per_code)
             raster_filepath = bypass_max_path_limit(os.path.join(self.scenario_download_dir, raster_filename))
             self.downloader.download_task(task_id, raster_filepath)
-            visited_raster_codes.add(raster_code)
+            rasters_per_code[raster_code].append(raster_filepath)
+        self.report_progress(progress_msg, increase_current_step=False)
+        vrt_options = {"resolution": "average", "resampleAlg": "nearest"}
+        for raster_code, raster_filepaths in rasters_per_code.items():
+            if len(raster_filepaths) > 1:
+                raster_filepaths.sort()
+                first_raster_filepath = raster_filepaths[0]
+                vrt_filepath = first_raster_filepath.replace("_01", "").replace(".tif", ".vrt")
+                progress_msg = f"Building VRT: '{vrt_filepath}'..."
+                self.report_progress(progress_msg, increase_current_step=False)
+                build_vrt(vrt_filepath, raster_filepaths, **vrt_options)
 
     @pyqtSlot()
     def run(self):

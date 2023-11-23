@@ -6,6 +6,7 @@ from math import ceil, sqrt
 from xml.etree import ElementTree
 
 import requests
+from osgeo import gdal
 from qgis.core import QgsApplication, QgsAuthMethodConfig, QgsLayerTreeGroup, QgsLayerTreeLayer, QgsProject
 from qgis.PyQt.QtCore import QSettings
 
@@ -217,3 +218,10 @@ def create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, projection=
         raster_task = r.json()
         raster_tasks.append(raster_task)
     return raster_tasks
+
+
+def build_vrt(output_filepath, raster_filepaths, **vrt_options):
+    """Build VRT for the list of rasters."""
+    options = gdal.BuildVRTOptions(**vrt_options)
+    vrt_ds = gdal.BuildVRT(output_filepath, raster_filepaths, options=options)
+    vrt_ds = None
