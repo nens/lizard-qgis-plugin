@@ -148,7 +148,10 @@ def try_to_write(working_dir):
 
 
 def split_scenario_extent(scenario_instance, max_pixel_count=1 * 10**8):
-    """Split raster task spatial bounds to fit in to maximum pixel count limit."""
+    """
+    Split raster task spatial bounds to fit in to maximum pixel count limit.
+    Reimplemented code from https://github.com/nens/threedi-scenario-downloader
+    """
     x1 = scenario_instance["origin_x"]
     y1 = scenario_instance["origin_y"]
     x2 = scenario_instance["upper_bound_x"]
@@ -157,15 +160,12 @@ def split_scenario_extent(scenario_instance, max_pixel_count=1 * 10**8):
     pixelsize_y = abs(scenario_instance["pixelsize_y"])
     width = abs((x2 - x1) / pixelsize_x)
     height = abs((y2 - y1) / pixelsize_y)
-
-    # Check if pixelsize fits the extent, if not, to maintain pixelsize, enlarge the extent
     if not width.is_integer():
         width = ceil(width)
         x2 = (width * pixelsize_x) + x1
     if not height.is_integer():
         height = ceil(height)
         y2 = (height * pixelsize_y) + y1
-
     raster_pixel_count = width * height
     if raster_pixel_count > max_pixel_count:
         max_pixel_per_axis = int(sqrt(max_pixel_count))
@@ -190,7 +190,10 @@ def split_scenario_extent(scenario_instance, max_pixel_count=1 * 10**8):
 
 
 def create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, projection=None, no_data=None, start_time=None):
-    """Create Lizard raster task."""
+    """
+    Create Lizard raster task.
+    Reimplemented code from https://github.com/nens/threedi-scenario-downloader
+    """
     raster_id = raster["uuid"]
     url = f"{lizard_url}rasters/{raster_id}/data/"
     bboxes, width, height = spatial_bounds

@@ -3,7 +3,6 @@
 import os
 import webbrowser
 
-from qgis.core import QgsCoordinateReferenceSystem
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import QSettings
 from qgis.PyQt.QtWidgets import QDialog, QInputDialog
