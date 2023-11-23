@@ -41,7 +41,11 @@ class ScenarioItemsDownloader(QRunnable):
         self.no_data = no_data
         self.total_progress = 100
         self.current_step = 0
-        self.number_of_steps = len(self.raw_results_to_download) + len(self.raster_results) + 1  # Extra task step
+        self.number_of_steps = 0
+        if raw_results_to_download:
+            self.number_of_steps += len(raw_results_to_download)
+        if raster_results:
+            self.number_of_steps += len(self.raster_results) + 1  # Extra task step
         self.percentage_per_step = self.total_progress / self.number_of_steps
         self.signals = ScenarioItemsDownloaderSignals()
 
@@ -66,6 +70,7 @@ class ScenarioItemsDownloader(QRunnable):
         progress_msg = f"Spawning raster tasks and preparing for download (scenario ID '{self.scenario_id}')..."
         self.report_progress(progress_msg)
         spatial_bounds = split_scenario_extent(self.scenario_instance)
+
         for raster_result in self.raster_results:
             raster_url = raster_result["raster"]
             lizard_url = self.downloader.LIZARD_URL
@@ -73,6 +78,7 @@ class ScenarioItemsDownloader(QRunnable):
             raster_response = requests.get(url=raster_url, auth=("__key__", api_key))
             raster_response.raise_for_status()
             raster = raster_response.json()
+            raster_code = raster_result["code"]
             original_raster_filename = raster_result["filename"]
             raster_name, raster_extension = original_raster_filename.rsplit(".", 1)
             tasks = create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, self.projection, self.no_data)
@@ -102,12 +108,15 @@ class ScenarioItemsDownloader(QRunnable):
                     raise ScenarioDownloadError(error_msg)
             time.sleep(5)
         # Download tasks files
+        visited_raster_codes = set()
         for task_id, raster_result in task_raster_results.items():
             raster_filename = raster_result["filename"]
+            raster_code = raster_result["code"]
             progress_msg = f"Downloading '{raster_filename}' (scenario ID: '{self.scenario_id}')..."
-            self.report_progress(progress_msg)
+            self.report_progress(progress_msg, increase_current_step=raster_code not in visited_raster_codes)
             raster_filepath = bypass_max_path_limit(os.path.join(self.scenario_download_dir, raster_filename))
             self.downloader.download_task(task_id, raster_filepath)
+            visited_raster_codes.add(raster_code)
 
     @pyqtSlot()
     def run(self):
