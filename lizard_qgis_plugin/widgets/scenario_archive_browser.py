@@ -4,7 +4,7 @@ import os
 from math import ceil
 from operator import itemgetter
 
-from qgis.core import Qgis, QgsRasterLayer, QgsRectangle
+from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsRasterLayer, QgsRectangle
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import QSettings, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
@@ -40,6 +40,8 @@ class ScenarioArchiveBrowser(uicls, basecls):
         self.scenario_results_tv.setModel(self.scenario_results_model)
         self.feedback_model = QStandardItemModel()
         self.feedback_lv.setModel(self.feedback_model)
+        self.current_scenario_instances = {}
+        self.current_scenario_results = {}
         self.pb_prev_page.clicked.connect(self.previous_scenarios)
         self.pb_next_page.clicked.connect(self.next_scenarios)
         self.page_sbox.valueChanged.connect(self.get_scenarios)
@@ -49,9 +51,8 @@ class ScenarioArchiveBrowser(uicls, basecls):
         self.pb_clear_feedback.clicked.connect(self.feedback_model.clear)
         self.pb_close.clicked.connect(self.close)
         self.scenario_search_le.returnPressed.connect(self.search_for_scenarios)
-        self.scenario_tv.selectionModel().selectionChanged.connect(self.toggle_add_wms)
+        self.scenario_tv.selectionModel().selectionChanged.connect(self.toggle_scenario_selected)
         self.get_scenarios()
-        self.current_scenario_results = {}
         self.resize(QSize(1600, 850))
 
     def log_feedback(self, feedback_message, level=Qgis.Info):
@@ -67,19 +68,19 @@ class ScenarioArchiveBrowser(uicls, basecls):
         feedback_item.setForeground(brush)
         self.feedback_model.appendRow([feedback_item])
 
-    def toggle_add_wms(self):
-        """Toggle add as WMS button if any scenario is selected."""
+    def toggle_scenario_selected(self):
+        """Toggle action widgets if any scenario is selected."""
         self.scenario_results_model.clear()
         self.current_scenario_results.clear()
+        self.pb_download.setDisabled(True)
+        self.grp_raster_settings.setDisabled(True)
         selection_model = self.scenario_tv.selectionModel()
         if selection_model.hasSelection():
             self.pb_add_wms.setEnabled(True)
             self.pb_show_files.setEnabled(True)
-            self.pb_download.setEnabled(True)
         else:
             self.pb_add_wms.setDisabled(True)
             self.pb_show_files.setDisabled(True)
-            self.pb_dwonload.setDisabled(True)
 
     def previous_scenarios(self):
         """Move to the previous matching scenarios page."""
@@ -97,6 +98,7 @@ class ScenarioArchiveBrowser(uicls, basecls):
             pages_nr = ceil(matching_scenarios_count / self.TABLE_LIMIT) or 1
             self.page_sbox.setMaximum(pages_nr)
             self.page_sbox.setSuffix(f" / {pages_nr}")
+            self.current_scenario_instances.clear()
             self.scenario_model.clear()
             offset = (self.page_sbox.value() - 1) * self.TABLE_LIMIT
             header = ["Scenario name", "Model name", "Organisation", "User", "Created", "UUID"]
@@ -104,16 +106,17 @@ class ScenarioArchiveBrowser(uicls, basecls):
             matching_scenarios = self.plugin.downloader.find_scenarios(
                 self.TABLE_LIMIT, offset=offset, name__icontains=searched_text
             )
-            for scenario in sorted(matching_scenarios, key=itemgetter("created"), reverse=True):
-                name_item = QStandardItem(scenario["name"])
-                model_name_item = QStandardItem(scenario["model_name"])
-                organisation_item = QStandardItem(scenario["organisation"]["name"])
-                user_item = QStandardItem(scenario["supplier"])
-                created_item = QStandardItem(scenario["created"].split("T")[0])
-                uuid_item = QStandardItem(scenario["uuid"])
-                self.scenario_model.appendRow(
-                    [name_item, model_name_item, organisation_item, user_item, created_item, uuid_item]
-                )
+            for scenario_instance in sorted(matching_scenarios, key=itemgetter("created"), reverse=True):
+                scenario_uuid = scenario_instance["uuid"]
+                uuid_item = QStandardItem(scenario_uuid)
+                name_item = QStandardItem(scenario_instance["name"])
+                model_name_item = QStandardItem(scenario_instance["model_name"])
+                organisation_item = QStandardItem(scenario_instance["organisation"]["name"])
+                user_item = QStandardItem(scenario_instance["supplier"])
+                created_item = QStandardItem(scenario_instance["created"].split("T")[0])
+                scenario_items = [name_item, model_name_item, organisation_item, user_item, created_item, uuid_item]
+                self.scenario_model.appendRow(scenario_items)
+                self.current_scenario_instances[scenario_uuid] = scenario_instance
             for i in range(len(header)):
                 self.scenario_tv.resizeColumnToContents(i)
         except Exception as e:
@@ -142,9 +145,10 @@ class ScenarioArchiveBrowser(uicls, basecls):
         current_row = index.row()
         scenario_uuid_item = self.scenario_model.item(current_row, self.UUID_COLUMN_IDX)
         scenario_uuid = scenario_uuid_item.text()
+        scenario_instance = self.current_scenario_instances[scenario_uuid]
         scenario_results = self.plugin.downloader.get_scenario_instance_results(scenario_uuid)
-        self.scenario_results_model.clear()
         self.current_scenario_results.clear()
+        self.scenario_results_model.clear()
         header = ["Item", "File name"]
         self.scenario_results_model.setHorizontalHeaderLabels(header)
         for row_number, result in enumerate(scenario_results, start=0):
@@ -167,6 +171,10 @@ class ScenarioArchiveBrowser(uicls, basecls):
             self.current_scenario_results[result_id] = result
         for i in range(len(header)):
             self.scenario_results_tv.resizeColumnToContents(i)
+        self.pb_download.setEnabled(True)
+        self.grp_raster_settings.setEnabled(True)
+        scenario_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(scenario_instance["projection"])
+        self.crs_widget.setCrs(scenario_crs)
 
     def download_results(self):
         """Download selected (checked) result files."""
@@ -188,13 +196,23 @@ class ScenarioArchiveBrowser(uicls, basecls):
             raster = result["raster"]
             if not checkbox.isChecked():
                 continue
+            # Remove checkbox before sending to separate thread
+            result_copy = {k: v for k, v in result.items() if k != "checkbox"}
             if raster:
-                rasters_to_download.append(result)
+                rasters_to_download.append(result_copy)
             else:
-                raw_results_to_download.append(result)
-        scenario_instance = self.plugin.downloader.get_scenario_instance(scenario_uuid)
+                raw_results_to_download.append(result_copy)
+        scenario_instance = self.current_scenario_instances[scenario_uuid]
+        projection = self.crs_widget.crs().authid()
+        no_data = self.no_data_sbox.value()
         scenario_items_downloader = ScenarioItemsDownloader(
-            self.plugin.downloader, scenario_instance, raw_results_to_download, rasters_to_download, download_dir
+            self.plugin.downloader,
+            scenario_instance,
+            raw_results_to_download,
+            rasters_to_download,
+            download_dir,
+            projection,
+            no_data,
         )
         scenario_items_downloader.signals.download_progress.connect(self.on_download_progress)
         scenario_items_downloader.signals.download_finished.connect(self.on_download_finished)
@@ -204,19 +222,21 @@ class ScenarioArchiveBrowser(uicls, basecls):
 
     def on_download_progress(self, scenario_instance, progress_message, current_progress, total_progress):
         """Feedback on download progress signal."""
-        scenario_id = scenario_instance["uuid"]
-        msg = progress_message if progress_message else f"Downloading files of the scenario ID: '{scenario_id}'..."
+        scenario_uuid = scenario_instance["uuid"]
+        msg = progress_message if progress_message else f"Downloading files of the scenario ID: '{scenario_uuid}'..."
         self.plugin.communication.progress_bar(msg, 0, total_progress, current_progress, clear_msg_bar=True)
 
     def on_download_finished(self, message):
         """Feedback on download finished signal."""
         self.plugin.communication.clear_message_bar()
         self.plugin.communication.bar_info(message)
+        self.log_feedback(message)
 
     def on_download_failed(self, error_message):
         """Feedback on download failed signal."""
         self.plugin.communication.clear_message_bar()
         self.plugin.communication.bar_error(error_message)
+        self.log_feedback(error_message, Qgis.Critical)
 
     def search_for_scenarios(self):
         """Method used for searching scenarios with text typed withing search bar."""

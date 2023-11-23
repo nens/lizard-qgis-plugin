@@ -30,9 +30,6 @@ class SettingsDialog(QDialog):
         self.communication = plugin.communication
         self.base_url_settings_entry = f"{LIZARD_SETTINGS_ENTRY}/base_url"
         self.base_url_le.setText(QSettings().value(self.base_url_settings_entry, self.DEFAULT_BASE_URL))
-        epsg_4326 = QgsCoordinateReferenceSystem()
-        epsg_4326.createFromString("EPSG:4326")
-        self.crs_widget.setFilter([epsg_4326])
         self.change_base_url_pb.clicked.connect(self.change_base_url)
         self.set_pak_pb.clicked.connect(self.set_personal_api_key)
         self.obtain_pak_pb.clicked.connect(self.obtain_personal_api_key)

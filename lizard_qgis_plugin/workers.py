@@ -7,6 +7,8 @@ import requests
 from qgis.PyQt.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
 from threedi_mi_utils import bypass_max_path_limit
 
+from lizard_qgis_plugin.utils import create_raster_tasks, split_scenario_extent
+
 
 class ScenarioDownloadError(Exception):
     """Scenario files downloader exception class."""
@@ -25,7 +27,9 @@ class ScenarioItemsDownloaderSignals(QObject):
 class ScenarioItemsDownloader(QRunnable):
     """Worker object responsible for downloading scenario files."""
 
-    def __init__(self, downloader, scenario_instance, raw_results_to_download, raster_results, download_dir):
+    def __init__(
+        self, downloader, scenario_instance, raw_results_to_download, raster_results, download_dir, projection, no_data
+    ):
         super().__init__()
         self.downloader = downloader
         self.scenario_instance = scenario_instance
@@ -33,6 +37,8 @@ class ScenarioItemsDownloader(QRunnable):
         self.raw_results_to_download = raw_results_to_download
         self.raster_results = raster_results
         self.scenario_download_dir = os.path.join(download_dir, f"scenario_{self.scenario_id}")
+        self.projection = projection
+        self.no_data = no_data
         self.total_progress = 100
         self.current_step = 0
         self.number_of_steps = len(self.raw_results_to_download) + len(self.raster_results) + 1  # Extra task step
@@ -59,22 +65,28 @@ class ScenarioItemsDownloader(QRunnable):
         # Create tasks
         progress_msg = f"Spawning raster tasks and preparing for download (scenario ID '{self.scenario_id}')..."
         self.report_progress(progress_msg)
+        spatial_bounds = split_scenario_extent(self.scenario_instance)
         for raster_result in self.raster_results:
             raster_url = raster_result["raster"]
-            raster_response = requests.get(
-                url=raster_url,
-                auth=("__key__", self.downloader.get_api_key()),
-            )
+            lizard_url = self.downloader.LIZARD_URL
+            api_key = self.downloader.get_api_key()
+            raster_response = requests.get(url=raster_url, auth=("__key__", api_key))
             raster_response.raise_for_status()
             raster = raster_response.json()
-            # TODO: Add optional parameters for raster task creation
-            task = self.downloader.create_raster_task(
-                raster,
-                self.scenario_instance,
-            )
-            task_id = task["task_id"]
-            task_raster_results[task_id] = raster_result
-            processed_tasks[task_id] = False
+            original_raster_filename = raster_result["filename"]
+            raster_name, raster_extension = original_raster_filename.rsplit(".", 1)
+            tasks = create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, self.projection, self.no_data)
+            is_chunked_raster = len(tasks) > 1
+            for raster_task_idx, task in enumerate(tasks, 1):
+                task_id = task["task_id"]
+                if is_chunked_raster:
+                    raster_filename = f"{raster_name}_{raster_task_idx:02d}.{raster_extension}"
+                    raster_result_copy = {k: v for k, v in raster_result.items()}
+                    raster_result_copy["filename"] = raster_filename
+                    task_raster_results[task_id] = raster_result_copy
+                else:
+                    task_raster_results[task_id] = raster_result
+                processed_tasks[task_id] = False
         # Check status of task and download
         while not all(processed_tasks.values()):
             for task_id, processed in processed_tasks.items():

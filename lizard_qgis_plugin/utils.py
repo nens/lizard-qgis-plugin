@@ -2,6 +2,7 @@
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 import os
 import uuid
+from math import ceil, sqrt
 from xml.etree import ElementTree
 
 import requests
@@ -144,3 +145,72 @@ def try_to_write(working_dir):
     with open(test_file_path, "w") as test_file:
         test_file.write("")
     os.remove(test_file_path)
+
+
+def split_scenario_extent(scenario_instance, max_pixel_count=1 * 10**8):
+    """Split raster task spatial bounds to fit in to maximum pixel count limit."""
+    x1 = scenario_instance["origin_x"]
+    y1 = scenario_instance["origin_y"]
+    x2 = scenario_instance["upper_bound_x"]
+    y2 = scenario_instance["upper_bound_y"]
+    pixelsize_x = abs(scenario_instance["pixelsize_x"])
+    pixelsize_y = abs(scenario_instance["pixelsize_y"])
+    width = abs((x2 - x1) / pixelsize_x)
+    height = abs((y2 - y1) / pixelsize_y)
+
+    # Check if pixelsize fits the extent, if not, to maintain pixelsize, enlarge the extent
+    if not width.is_integer():
+        width = ceil(width)
+        x2 = (width * pixelsize_x) + x1
+    if not height.is_integer():
+        height = ceil(height)
+        y2 = (height * pixelsize_y) + y1
+
+    raster_pixel_count = width * height
+    if raster_pixel_count > max_pixel_count:
+        max_pixel_per_axis = int(sqrt(max_pixel_count))
+        columns_count = ceil(width / max_pixel_per_axis)
+        rows_count = ceil(height / max_pixel_per_axis)
+        sub_width = max_pixel_per_axis * pixelsize_x
+        sub_height = max_pixel_per_axis * pixelsize_y
+        bboxes = []
+        for column_idx in range(columns_count):
+            sub_x1 = x1 + (column_idx * sub_width)
+            sub_x2 = sub_x1 + sub_width
+            for row_idx in range(rows_count):
+                sub_y1 = y1 + (row_idx * sub_height)
+                sub_y2 = sub_y1 + sub_height
+                sub_bbox = (sub_x1, sub_y1, sub_x2, sub_y2)
+                bboxes.append(sub_bbox)
+        spatial_bounds = (bboxes, sub_width, sub_height)
+    else:
+        bboxes = [(x1, y1, x2, y2)]
+        spatial_bounds = (bboxes, width, height)
+    return spatial_bounds
+
+
+def create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, projection=None, no_data=None, start_time=None):
+    """Create Lizard raster task."""
+    raster_id = raster["uuid"]
+    url = f"{lizard_url}rasters/{raster_id}/data/"
+    bboxes, width, height = spatial_bounds
+    raster_tasks = []
+    for x1, y1, x2, y2 in bboxes:
+        bbox = f"{x1},{y1},{x2},{y2}"
+        payload = {
+            "width": width,
+            "height": height,
+            "bbox": bbox,
+            "projection": projection,
+            "format": "geotiff",
+            "async": "true",
+        }
+        if no_data:
+            payload["no_data"] = no_data
+        if start_time is not None:
+            payload["start"] = start_time
+        r = requests.get(url=url, auth=("__key__", api_key), params=payload)
+        r.raise_for_status()
+        raster_task = r.json()
+        raster_tasks.append(raster_task)
+    return raster_tasks
