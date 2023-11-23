@@ -27,6 +27,8 @@ class ScenarioItemsDownloaderSignals(QObject):
 class ScenarioItemsDownloader(QRunnable):
     """Worker object responsible for downloading scenario files."""
 
+    TASK_CHECK_SLEEP_TIME = 5
+
     def __init__(
         self, downloader, scenario_instance, raw_results_to_download, raster_results, download_dir, projection, no_data
     ):
@@ -45,7 +47,7 @@ class ScenarioItemsDownloader(QRunnable):
         if raw_results_to_download:
             self.number_of_steps += len(raw_results_to_download)
         if raster_results:
-            self.number_of_steps += len(self.raster_results) + 1  # Extra task step
+            self.number_of_steps += len(self.raster_results) + 1  # Extra step for spawning raster creation tasks
         self.percentage_per_step = self.total_progress / self.number_of_steps
         self.signals = ScenarioItemsDownloaderSignals()
 
@@ -70,7 +72,6 @@ class ScenarioItemsDownloader(QRunnable):
         progress_msg = f"Spawning raster tasks and preparing for download (scenario ID '{self.scenario_id}')..."
         self.report_progress(progress_msg)
         spatial_bounds = split_scenario_extent(self.scenario_instance)
-
         for raster_result in self.raster_results:
             raster_url = raster_result["raster"]
             lizard_url = self.downloader.LIZARD_URL
@@ -78,7 +79,6 @@ class ScenarioItemsDownloader(QRunnable):
             raster_response = requests.get(url=raster_url, auth=("__key__", api_key))
             raster_response.raise_for_status()
             raster = raster_response.json()
-            raster_code = raster_result["code"]
             original_raster_filename = raster_result["filename"]
             raster_name, raster_extension = original_raster_filename.rsplit(".", 1)
             tasks = create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, self.projection, self.no_data)
@@ -106,7 +106,7 @@ class ScenarioItemsDownloader(QRunnable):
                 else:
                     error_msg = f"Task {task_id} failed, status was: {task_status}"
                     raise ScenarioDownloadError(error_msg)
-            time.sleep(5)
+            time.sleep(self.TASK_CHECK_SLEEP_TIME)
         # Download tasks files
         visited_raster_codes = set()
         for task_id, raster_result in task_raster_results.items():
