@@ -434,7 +434,7 @@
             <font>
              <family>Segoe UI</family>
              <pointsize>10</pointsize>
-             <italic>true</italic>
+             <italic>false</italic>
             </font>
            </property>
            <property name="text">
@@ -448,7 +448,7 @@
             <font>
              <family>Segoe UI</family>
              <pointsize>10</pointsize>
-             <italic>true</italic>
+             <italic>false</italic>
             </font>
            </property>
            <property name="text">

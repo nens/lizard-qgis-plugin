@@ -110,7 +110,7 @@ class ScenarioItemsDownloader(QRunnable):
             time.sleep(self.TASK_CHECK_SLEEP_TIME)
         # Download tasks files
         rasters_per_code = defaultdict(list)
-        for task_id, raster_result in task_raster_results.items():
+        for task_id, raster_result in sorted(task_raster_results.items(), key=lambda x: x[1]["filename"]):
             raster_filename = raster_result["filename"]
             raster_code = raster_result["code"]
             progress_msg = f"Downloading '{raster_filename}' (scenario ID: '{self.scenario_id}')..."
@@ -119,7 +119,7 @@ class ScenarioItemsDownloader(QRunnable):
             self.downloader.download_task(task_id, raster_filepath)
             rasters_per_code[raster_code].append(raster_filepath)
         self.report_progress(progress_msg, increase_current_step=False)
-        vrt_options = {"resolution": "average", "resampleAlg": "nearest"}
+        vrt_options = {"resolution": "average", "resampleAlg": "nearest", "srcNodata": self.no_data}
         for raster_code, raster_filepaths in rasters_per_code.items():
             if len(raster_filepaths) > 1:
                 raster_filepaths.sort()
