@@ -400,34 +400,6 @@
          <string>Rasters download settings</string>
         </property>
         <layout class="QGridLayout" name="gridLayout_3">
-         <item row="0" column="1">
-          <widget class="QgsSpinBox" name="no_data_sbox">
-           <property name="font">
-            <font>
-             <family>Segoe UI</family>
-             <pointsize>10</pointsize>
-            </font>
-           </property>
-           <property name="frame">
-            <bool>false</bool>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-           </property>
-           <property name="minimum">
-            <number>-1000000</number>
-           </property>
-           <property name="maximum">
-            <number>1000000</number>
-           </property>
-           <property name="value">
-            <number>-9999</number>
-           </property>
-           <property name="showClearButton">
-            <bool>false</bool>
-           </property>
-          </widget>
-         </item>
          <item row="0" column="0">
           <widget class="QLabel" name="label_3">
            <property name="font">
@@ -463,6 +435,31 @@
              <family>Segoe UI</family>
              <pointsize>10</pointsize>
             </font>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QDoubleSpinBox" name="no_data_sbox">
+           <property name="font">
+            <font>
+             <family>Segoe UI</family>
+             <pointsize>10</pointsize>
+            </font>
+           </property>
+           <property name="frame">
+            <bool>false</bool>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+           <property name="minimum">
+            <double>-1000000.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>1000000.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>-9999.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -603,11 +600,6 @@
    <class>QgsProjectionSelectionWidget</class>
    <extends>QWidget</extends>
    <header>qgsprojectionselectionwidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>QgsSpinBox</class>
-   <extends>QSpinBox</extends>
-   <header>qgsspinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

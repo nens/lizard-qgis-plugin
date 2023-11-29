@@ -209,8 +209,8 @@ def create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, projection=
             "format": "geotiff",
             "async": "true",
         }
-        if no_data:
-            payload["no_data"] = no_data
+        if no_data is not None:
+            payload["nodata"] = no_data
         if start_time is not None:
             payload["start"] = start_time
         r = requests.get(url=url, auth=("__key__", api_key), params=payload)
