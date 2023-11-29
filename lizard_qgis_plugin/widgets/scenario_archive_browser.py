@@ -16,6 +16,7 @@ from lizard_qgis_plugin.utils import (
     count_scenarios_with_name,
     create_tree_group,
     get_capabilities_layer_uris,
+    get_url_raster_instance,
     try_to_write,
 )
 from lizard_qgis_plugin.workers import ScenarioItemsDownloader
@@ -149,21 +150,30 @@ class ScenarioArchiveBrowser(uicls, basecls):
         scenario_results = self.plugin.downloader.get_scenario_instance_results(scenario_uuid)
         self.current_scenario_results.clear()
         self.scenario_results_model.clear()
-        header = ["Item", "File name"]
+        header, checkboxes_width = ["Item", "File name"], []
         self.scenario_results_model.setHorizontalHeaderLabels(header)
         for row_number, result in enumerate(scenario_results, start=0):
+            result_checked, result_enabled = True, True
             result_id = result["id"]
             result_name = result["name"]
             result_attachment_url = result["attachment_url"]
             result_raster = result["raster"]
             if result_raster:
-                result_filename = result_name.lower().replace("(timeseries)", "").strip().replace(" ", "_") + ".tif"
+                raster_instance = get_url_raster_instance(self.plugin.downloader.get_api_key(), result_raster)
+                if raster_instance["temporal"]:
+                    result_checked, result_enabled = False, False
+                    result_filename = result_name.lower().replace("(timeseries)", "").strip().replace(" ", "_") + ".tif"
+                else:
+                    result_filename = result_name.lower().replace(" ", "_") + ".tif"
             else:
                 result_filename = result_attachment_url.rsplit("/", 1)[-1]
             result_checkbox = QCheckBox(result_name)
-            result_checkbox.setChecked(True)
+            result_checkbox.setEnabled(result_enabled)
+            result_checkbox.setChecked(result_checked)
             results_checkbox_item = QStandardItem("")
             result_filename_item = QStandardItem(result_filename)
+            result_filename_item.setEnabled(result_enabled)
+            checkboxes_width.append(result_checkbox.width())
             self.scenario_results_model.appendRow([results_checkbox_item, result_filename_item])
             self.scenario_results_tv.setIndexWidget(self.scenario_results_model.index(row_number, 0), result_checkbox)
             result["checkbox"] = result_checkbox
@@ -171,6 +181,8 @@ class ScenarioArchiveBrowser(uicls, basecls):
             self.current_scenario_results[result_id] = result
         for i in range(len(header)):
             self.scenario_results_tv.resizeColumnToContents(i)
+        if checkboxes_width:
+            self.scenario_results_tv.setColumnWidth(0, max(checkboxes_width))
         self.pb_download.setEnabled(True)
         self.grp_raster_settings.setEnabled(True)
         scenario_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(scenario_instance["projection"])

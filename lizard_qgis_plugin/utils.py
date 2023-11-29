@@ -190,6 +190,18 @@ def split_scenario_extent(scenario_instance, max_pixel_count=1 * 10**8):
     return spatial_bounds
 
 
+def get_url_raster_instance(api_key, raster_url):
+    """Return raster instance from the raster URL."""
+    r = requests.get(
+        url=raster_url,
+        auth=("__key__", api_key),
+    )
+    r.raise_for_status()
+
+    raster = r.json()
+    return raster
+
+
 def create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, projection=None, no_data=None, start_time=None):
     """
     Create Lizard raster task.
