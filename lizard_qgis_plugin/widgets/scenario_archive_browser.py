@@ -45,7 +45,7 @@ class ScenarioArchiveBrowser(uicls, basecls):
         self.current_scenario_results = {}
         self.pb_prev_page.clicked.connect(self.previous_scenarios)
         self.pb_next_page.clicked.connect(self.next_scenarios)
-        self.page_sbox.valueChanged.connect(self.get_scenarios)
+        self.page_sbox.valueChanged.connect(self.fetch_scenarios)
         self.pb_add_wms.clicked.connect(self.load_as_wms_layers)
         self.pb_show_files.clicked.connect(self.fetch_results)
         self.pb_download.clicked.connect(self.download_results)
@@ -53,7 +53,7 @@ class ScenarioArchiveBrowser(uicls, basecls):
         self.pb_close.clicked.connect(self.close)
         self.scenario_search_le.returnPressed.connect(self.search_for_scenarios)
         self.scenario_tv.selectionModel().selectionChanged.connect(self.toggle_scenario_selected)
-        self.get_scenarios()
+        self.fetch_scenarios()
         self.resize(QSize(1600, 850))
 
     def log_feedback(self, feedback_message, level=Qgis.Info):
@@ -91,7 +91,7 @@ class ScenarioArchiveBrowser(uicls, basecls):
         """Move to the next matching scenarios page."""
         self.page_sbox.setValue(self.page_sbox.value() + 1)
 
-    def get_scenarios(self):
+    def fetch_scenarios(self):
         """Fetch and list matching scenarios."""
         try:
             searched_text = self.scenario_search_le.text()
@@ -101,6 +101,8 @@ class ScenarioArchiveBrowser(uicls, basecls):
             self.page_sbox.setSuffix(f" / {pages_nr}")
             self.current_scenario_instances.clear()
             self.scenario_model.clear()
+            self.current_scenario_results.clear()
+            self.scenario_results_model.clear()
             offset = (self.page_sbox.value() - 1) * self.TABLE_LIMIT
             header = ["Scenario name", "Model name", "Organisation", "User", "Created", "UUID"]
             self.scenario_model.setHorizontalHeaderLabels(header)
@@ -124,19 +126,6 @@ class ScenarioArchiveBrowser(uicls, basecls):
             self.close()
             error_msg = f"Error: {e}"
             self.plugin.communication.show_error(error_msg)
-
-    def select_download_directory(self):
-        """Select download directory path widget."""
-        download_dir = QFileDialog.getExistingDirectory(self, "Select download directory")
-        if download_dir:
-            try:
-                try_to_write(download_dir)
-            except (PermissionError, OSError):
-                self.plugin.communication.bar_warn(
-                    "Can't write to the selected location. Please select a folder to which you have write permission."
-                )
-                return
-            return download_dir
 
     def fetch_results(self):
         """Fetch and show selected available scenario result files."""
@@ -187,6 +176,19 @@ class ScenarioArchiveBrowser(uicls, basecls):
         self.grp_raster_settings.setEnabled(True)
         scenario_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(scenario_instance["projection"])
         self.crs_widget.setCrs(scenario_crs)
+
+    def select_download_directory(self):
+        """Select download directory path widget."""
+        download_dir = QFileDialog.getExistingDirectory(self, "Select download directory")
+        if download_dir:
+            try:
+                try_to_write(download_dir)
+            except (PermissionError, OSError):
+                self.plugin.communication.bar_warn(
+                    "Can't write to the selected location. Please select a folder to which you have write permission."
+                )
+                return
+            return download_dir
 
     def download_results(self):
         """Download selected (checked) result files."""
@@ -252,10 +254,10 @@ class ScenarioArchiveBrowser(uicls, basecls):
 
     def search_for_scenarios(self):
         """Method used for searching scenarios with text typed withing search bar."""
-        self.page_sbox.valueChanged.disconnect(self.get_scenarios)
+        self.page_sbox.valueChanged.disconnect(self.fetch_scenarios)
         self.page_sbox.setValue(1)
-        self.page_sbox.valueChanged.connect(self.get_scenarios)
-        self.get_scenarios()
+        self.page_sbox.valueChanged.connect(self.fetch_scenarios)
+        self.fetch_scenarios()
 
     def load_as_wms_layers(self):
         """Loading selected scenario as a set of the WMS layers."""
