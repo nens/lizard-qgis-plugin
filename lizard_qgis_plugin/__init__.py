@@ -2,17 +2,24 @@
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 import os.path
 
+from qgis.PyQt.QtCore import QThreadPool
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
 from lizard_qgis_plugin.communication import UICommunication
 from lizard_qgis_plugin.deps.custom_imports import patch_wheel_imports
 from lizard_qgis_plugin.utils import count_scenarios_with_name
-from lizard_qgis_plugin.widgets.scenario_archive_browser import ScenarioArchiveBrowser
 from lizard_qgis_plugin.widgets.settings import SettingsDialog
 
-patch_wheel_imports()
-from threedi_scenario_downloader import downloader
+try:
+    from threedi_scenario_downloader import downloader
+
+    from lizard_qgis_plugin.widgets.scenario_archive_browser import ScenarioArchiveBrowser
+except ImportError:
+    patch_wheel_imports()
+    from threedi_scenario_downloader import downloader
+
+    from lizard_qgis_plugin.widgets.scenario_archive_browser import ScenarioArchiveBrowser
 
 
 def classFactory(iface):
@@ -22,11 +29,15 @@ def classFactory(iface):
 class ThreediLizardPlugin:
     PLUGIN_NAME = "Lizard"
     PLUGIN_ENTRY_NAME = "ThreediLizard"
+    MAX_DOWNLOAD_THREAD_COUNT = 1
 
     def __init__(self, iface):
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
         self.downloader = downloader
+        self.scenario_downloader_pool = QThreadPool()
+        self.scenario_downloader_pool.setMaxThreadCount(self.MAX_DOWNLOAD_THREAD_COUNT)
+        self.scenario_browser = None
         self.actions = []
         self.menu = self.PLUGIN_NAME
         self.toolbar = self.iface.addToolBar(self.PLUGIN_ENTRY_NAME)
@@ -92,11 +103,16 @@ class ThreediLizardPlugin:
     def show_settings(self):
         """Show plugin settings dialog."""
         self.settings.show()
+        self.settings.raise_()
+        self.settings.activateWindow()
 
     def run(self):
         """Run method that loads and starts the plugin"""
         self.settings.ensure_api_key_present()
         if not self.settings.api_key:
             return
-        scenario_browser = ScenarioArchiveBrowser(self)
-        scenario_browser.exec_()
+        if self.scenario_browser is None:
+            self.scenario_browser = ScenarioArchiveBrowser(self)
+        self.scenario_browser.show()
+        self.scenario_browser.raise_()
+        self.scenario_browser.activateWindow()

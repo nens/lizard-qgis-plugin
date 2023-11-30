@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>500</width>
-    <height>125</height>
+    <height>150</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>500</width>
-    <height>100</height>
+    <height>150</height>
    </size>
   </property>
   <property name="font">
@@ -26,17 +26,23 @@
    <string>Lizard settings</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="2" column="5">
-    <widget class="QPushButton" name="obtain_pak_pb">
+   <item row="1" column="2" colspan="3">
+    <widget class="QLineEdit" name="base_url_le">
      <property name="text">
-      <string>Obtain...</string>
+      <string/>
+     </property>
+     <property name="frame">
+      <bool>false</bool>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
-   <item row="2" column="4">
-    <widget class="QPushButton" name="set_pak_pb">
+   <item row="1" column="5">
+    <widget class="QPushButton" name="change_base_url_pb">
      <property name="text">
-      <string>Set...</string>
+      <string>Change...</string>
      </property>
     </widget>
    </item>
@@ -47,10 +53,24 @@
      </property>
     </widget>
    </item>
+   <item row="1" column="1">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Base URL:</string>
+     </property>
+    </widget>
+   </item>
    <item row="2" column="1">
     <widget class="QLabel" name="label_5">
      <property name="text">
       <string>API Key:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="4">
+    <widget class="QPushButton" name="set_pak_pb">
+     <property name="text">
+      <string>Set...</string>
      </property>
     </widget>
    </item>
@@ -64,30 +84,23 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="5">
-    <widget class="QPushButton" name="change_base_url_pb">
-     <property name="text">
-      <string>Change...</string>
+   <item row="3" column="5">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
      </property>
-    </widget>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
    </item>
-   <item row="1" column="1">
-    <widget class="QLabel" name="label">
+   <item row="2" column="5">
+    <widget class="QPushButton" name="obtain_pak_pb">
      <property name="text">
-      <string>Base URL:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="3" colspan="2">
-    <widget class="QLineEdit" name="base_url_le">
-     <property name="text">
-      <string/>
-     </property>
-     <property name="frame">
-      <bool>false</bool>
-     </property>
-     <property name="readOnly">
-      <bool>true</bool>
+      <string>Obtain...</string>
      </property>
     </widget>
    </item>
