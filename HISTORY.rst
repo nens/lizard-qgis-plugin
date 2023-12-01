@@ -1,6 +1,6 @@
 History
 =======
-0.2.0 (unreleased)
+0.2.0 (2023-11-30)
 ------------------
 
 - Added scenario items download functionality
