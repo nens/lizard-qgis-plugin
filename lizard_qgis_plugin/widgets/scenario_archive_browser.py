@@ -49,6 +49,7 @@ class ScenarioArchiveBrowser(uicls, basecls):
         self.pb_add_wms.clicked.connect(self.load_as_wms_layers)
         self.pb_show_files.clicked.connect(self.fetch_results)
         self.pb_download.clicked.connect(self.download_results)
+        self.toggle_selection_ckb.stateChanged.connect(self.toggle_results)
         self.pb_clear_feedback.clicked.connect(self.feedback_model.clear)
         self.pb_close.clicked.connect(self.close)
         self.scenario_search_le.returnPressed.connect(self.search_for_scenarios)
@@ -75,6 +76,8 @@ class ScenarioArchiveBrowser(uicls, basecls):
         self.current_scenario_results.clear()
         self.pb_download.setDisabled(True)
         self.grp_raster_settings.setDisabled(True)
+        self.toggle_selection_ckb.setChecked(False)
+        self.toggle_selection_ckb.setDisabled(True)
         selection_model = self.scenario_tv.selectionModel()
         if selection_model.hasSelection():
             self.pb_add_wms.setEnabled(True)
@@ -142,7 +145,7 @@ class ScenarioArchiveBrowser(uicls, basecls):
         header, checkboxes_width = ["Item", "File name"], []
         self.scenario_results_model.setHorizontalHeaderLabels(header)
         for row_number, result in enumerate(scenario_results, start=0):
-            result_checked, result_enabled = True, True
+            result_enabled = True
             result_id = result["id"]
             result_name = result["name"]
             result_attachment_url = result["attachment_url"]
@@ -150,7 +153,7 @@ class ScenarioArchiveBrowser(uicls, basecls):
             if result_raster:
                 raster_instance = get_url_raster_instance(self.plugin.downloader.get_api_key(), result_raster)
                 if raster_instance["temporal"]:
-                    result_checked, result_enabled = False, False
+                    result_enabled = False
                     result_filename = result_name.lower().replace("(timeseries)", "").strip().replace(" ", "_") + ".tif"
                 else:
                     result_filename = result_name.lower().replace(" ", "_") + ".tif"
@@ -158,7 +161,6 @@ class ScenarioArchiveBrowser(uicls, basecls):
                 result_filename = result_attachment_url.rsplit("/", 1)[-1]
             result_checkbox = QCheckBox(result_name)
             result_checkbox.setEnabled(result_enabled)
-            result_checkbox.setChecked(result_checked)
             results_checkbox_item = QStandardItem("")
             result_filename_item = QStandardItem(result_filename)
             result_filename_item.setEnabled(result_enabled)
@@ -174,8 +176,16 @@ class ScenarioArchiveBrowser(uicls, basecls):
             self.scenario_results_tv.setColumnWidth(0, max(checkboxes_width))
         self.pb_download.setEnabled(True)
         self.grp_raster_settings.setEnabled(True)
+        self.toggle_selection_ckb.setEnabled(True)
         scenario_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(scenario_instance["projection"])
         self.crs_widget.setCrs(scenario_crs)
+
+    def toggle_results(self, checked):
+        """Select/deselect all available scenario items."""
+        for result in self.current_scenario_results.values():
+            checkbox = result["checkbox"]
+            if checkbox.isEnabled():
+                checkbox.setChecked(checked)
 
     def select_download_directory(self):
         """Select download directory path widget."""
@@ -217,6 +227,7 @@ class ScenarioArchiveBrowser(uicls, basecls):
             else:
                 raw_results_to_download.append(result_copy)
         scenario_instance = self.current_scenario_instances[scenario_uuid]
+        scenario_name = scenario_instance["name"]
         projection = self.crs_widget.crs().authid()
         no_data = self.no_data_sbox.value()
         scenario_items_downloader = ScenarioItemsDownloader(
@@ -232,21 +243,31 @@ class ScenarioArchiveBrowser(uicls, basecls):
         scenario_items_downloader.signals.download_finished.connect(self.on_download_finished)
         scenario_items_downloader.signals.download_failed.connect(self.on_download_failed)
         self.plugin.scenario_downloader_pool.start(scenario_items_downloader)
-        self.log_feedback(f"Scenario '{scenario_uuid}' results download task added to the queue.")
+        self.log_feedback(f"Scenario '{scenario_name}' results download task added to the queue.")
 
     def on_download_progress(self, scenario_instance, progress_message, current_progress, total_progress):
         """Feedback on download progress signal."""
-        scenario_uuid = scenario_instance["uuid"]
-        msg = progress_message if progress_message else f"Downloading files of the scenario ID: '{scenario_uuid}'..."
+        scenario_name = scenario_instance["name"]
+        msg = progress_message if progress_message else f"Downloading files of the scenario: '{scenario_name}'..."
         self.plugin.communication.progress_bar(msg, 0, total_progress, current_progress, clear_msg_bar=True)
 
-    def on_download_finished(self, message):
+    def on_download_finished(self, scenario_instance, downloaded_files, message):
         """Feedback on download finished signal."""
         self.plugin.communication.clear_message_bar()
         self.plugin.communication.bar_info(message)
         self.log_feedback(message)
+        file_types_to_add = {"tif", "vrt"}
+        files_to_add = [fname for fname in downloaded_files.keys() if fname.rsplit(".", 1)[-1] in file_types_to_add]
+        if file_types_to_add:
+            scenario_name = scenario_instance["name"]
+            scenario_grp = create_tree_group(scenario_name)
+            for raster_filename in files_to_add:
+                raster_filepath = downloaded_files[raster_filename]
+                raster_layer = QgsRasterLayer(raster_filepath, raster_filename, "gdal")
+                add_layer_to_group(scenario_grp, raster_layer)
+            scenario_grp.setExpanded(False)
 
-    def on_download_failed(self, error_message):
+    def on_download_failed(self, scenario_instance, error_message):
         """Feedback on download failed signal."""
         self.plugin.communication.clear_message_bar()
         self.plugin.communication.bar_error(error_message)
