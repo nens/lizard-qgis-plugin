@@ -40,7 +40,7 @@ class ScenarioItemsDownloader(QRunnable):
         self.scenario_name = scenario_instance["name"]
         self.raw_results_to_download = raw_results_to_download
         self.raster_results = raster_results
-        self.scenario_download_dir = os.path.join(download_dir, f"scenario_{self.scenario_id}")
+        self.scenario_download_dir = os.path.join(download_dir, f"scenario_{self.scenario_name}")
         self.projection = projection
         self.no_data = no_data
         self.total_progress = 100
