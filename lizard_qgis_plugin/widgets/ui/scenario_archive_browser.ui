@@ -556,7 +556,7 @@
            <enum>Qt::LeftToRight</enum>
           </property>
           <property name="text">
-           <string>Select/deselct all</string>
+           <string>Select/deselect all</string>
           </property>
          </widget>
         </item>
