@@ -4,7 +4,7 @@ History
 0.2.1 (unreleased)
 ------------------
 
--
+- Several small fixes in downloading scenario results (issue #10)
 
 
 0.2.0 (2023-11-30)
