@@ -9,6 +9,8 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtCore import QSettings, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QCheckBox, QFileDialog
+from qgis.utils import plugins
+from threedi_mi_utils import LocalRevision, LocalSchematisation, list_local_schematisations
 
 from lizard_qgis_plugin.utils import (
     WMSServiceException,
@@ -200,6 +202,52 @@ class ScenarioArchiveBrowser(uicls, basecls):
                 return
             return download_dir
 
+    def discover_download_directory(self, scenario_instance):
+        """Discover download directory."""
+        working_dir = QSettings().value("threedi/working_dir", "", type=str)
+        if not working_dir:
+            working_dir = self.select_download_directory()
+        download_dir = working_dir
+        model_id = scenario_instance["model_identifier"]
+        if not model_id:
+            return download_dir
+        try:
+            import threedi_models_and_simulations.api_calls.threedi_calls as tc
+            import threedi_models_and_simulations.deps.custom_imports as ci
+
+            ci.patch_wheel_imports()
+            threedi_models_and_simulations = plugins["threedi_models_and_simulations"]
+        except (AttributeError, ImportError):
+            return download_dir
+        ms_settings = threedi_models_and_simulations.plugin_settings
+        username, personal_api_token = ms_settings.get_3di_auth()
+        threedi_api = tc.get_api_client_with_personal_api_token(personal_api_token, ms_settings.api_url)
+        threedi_api_calls = tc.ThreediCalls(threedi_api)
+        try:
+            local_schematisations = list_local_schematisations(working_dir)
+            model_3di = threedi_api_calls.fetch_3di_model(int(model_id))
+            model_schematisation_id = model_3di.schematisation_id
+            if model_schematisation_id:
+                model_schematisation_name = model_3di.schematisation_name
+                model_revision_number = model_3di.revision_number
+                try:
+                    local_schematisation = local_schematisations[model_schematisation_id]
+                except KeyError:
+                    local_schematisation = LocalSchematisation(
+                        working_dir, model_schematisation_id, model_schematisation_name, create=True
+                    )
+                try:
+                    local_revision = local_schematisation.revisions[model_revision_number]
+                except KeyError:
+                    local_revision = LocalRevision(local_schematisation, model_revision_number)
+                    local_revision.make_revision_structure()
+                download_dir = local_revision.results_dir
+        except Exception as e:
+            warn_msg = f"Failed to set proper schematisation revision results folder due to the following error: {e}."
+            self.plugin.communication.log_warn(warn_msg)
+            download_dir = working_dir
+        return download_dir
+
     def download_results(self):
         """Download selected (checked) result files."""
         index = self.scenario_tv.currentIndex()
@@ -208,12 +256,11 @@ class ScenarioArchiveBrowser(uicls, basecls):
         current_row = index.row()
         scenario_uuid_item = self.scenario_model.item(current_row, self.UUID_COLUMN_IDX)
         scenario_uuid = scenario_uuid_item.text()
-        download_dir = QSettings().value("threedi/working_dir", "", type=str)
+        scenario_instance = self.current_scenario_instances[scenario_uuid]
+        download_dir = self.discover_download_directory(scenario_instance)
         if not download_dir:
-            download_dir = self.select_download_directory()
-            if not download_dir:
-                self.plugin.communication.bar_info("Downloading results files canceled..")
-                return
+            self.plugin.communication.bar_info("Downloading results files canceled..")
+            return
         rasters_to_download, raw_results_to_download = [], []
         for result in self.current_scenario_results.values():
             checkbox = result["checkbox"]
