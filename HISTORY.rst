@@ -2,8 +2,9 @@ History
 =======
 
 0.2.2 (unreleased)
+------------------
 
-- 
+- Fixes/enhancements: #12
 
 
 0.2.1 (2023-12-15)
