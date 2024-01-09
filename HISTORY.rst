@@ -2,8 +2,9 @@ History
 =======
 
 0.2.2 (unreleased)
+------------------
 
-- 
+- Use default 3Di working directory structure when saving downloaded files (#12)
 
 
 0.2.1 (2023-12-15)
