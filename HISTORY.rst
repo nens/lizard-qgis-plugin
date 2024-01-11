@@ -1,7 +1,7 @@
 History
 =======
 
-0.2.2 (unreleased)
+0.2.2 (2024-1-11)
 ------------------
 
 - Use default 3Di working directory structure when saving downloaded files (#12)
