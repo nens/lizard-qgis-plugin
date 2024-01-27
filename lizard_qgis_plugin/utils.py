@@ -110,6 +110,39 @@ def get_capabilities_layer_uris(wms_url):
     return wms_uris
 
 
+def get_available_rasters_list(lizard_url):
+    """List all available rasters."""
+    url = f"{lizard_url}rasters/"
+    r = requests.get(url=url, auth=("__key__", get_api_key_auth_manager()))
+    r.raise_for_status()
+    response_json = r.json()
+    available_rasters = response_json["results"]
+    return available_rasters
+
+
+def find_rasters(lizard_url, limit, **kwargs):
+    """Find all available rasters matching given criteria."""
+    url = f"{lizard_url}rasters/"
+    payload = {"limit": limit}
+    payload.update(kwargs)
+    r = requests.get(url=url, auth=("__key__", get_api_key_auth_manager()), params=payload)
+    r.raise_for_status()
+    response_json = r.json()
+    matching_rasters = response_json["results"]
+    return matching_rasters
+
+
+def count_rasters_with_name(lizard_url, name):
+    """Return rasters search results count."""
+    url = f"{lizard_url}rasters/"
+    payload = {"name__icontains": name, "limit": 1}
+    r = requests.get(url=url, auth=("__key__", get_api_key_auth_manager()), params=payload)
+    r.raise_for_status()
+    response_json = r.json()
+    results_count = response_json["count"]
+    return results_count
+
+
 def count_scenarios_with_name(lizard_url, name):
     """Return scenario search results count."""
     url = f"{lizard_url}scenarios/"
