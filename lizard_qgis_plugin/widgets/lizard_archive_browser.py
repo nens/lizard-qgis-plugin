@@ -30,7 +30,7 @@ from lizard_qgis_plugin.utils import (
     get_url_raster_instance,
     try_to_write,
 )
-from lizard_qgis_plugin.workers import ScenarioItemsDownloader
+from lizard_qgis_plugin.workers import RasterDownloader, ScenarioItemsDownloader
 
 base_dir = os.path.dirname(__file__)
 uicls, basecls = uic.loadUiType(os.path.join(base_dir, "ui", "lizard.ui"))
@@ -74,13 +74,19 @@ class LizardBrowser(uicls, basecls):
         self.pb_next_page_raster.clicked.connect(self.next_rasters)
         self.page_sbox_raster.valueChanged.connect(self.fetch_rasters)
         self.pb_add_wms_raster.clicked.connect(self.load_raster_as_wms_layers)
+        self.pb_download_raster.clicked.connect(self.download_raster_file)
         self.raster_search_le.returnPressed.connect(self.search_for_rasters)
         self.raster_tv.selectionModel().selectionChanged.connect(self.toggle_raster_selected)
+        self.use_polygon_extent_rb.toggled.connect(self.on_extent_changed)
         self.clip_polygon_cbo.layerChanged.connect(self.on_polygon_changed)
         self.pb_clear_feedback.clicked.connect(self.feedback_model.clear)
         self.pb_close.clicked.connect(self.close)
         self.fetch_scenarios()
         self.fetch_rasters()
+        self.clip_name_field_cbo.setLayer(self.clip_polygon_cbo.currentLayer())
+        working_dir = QSettings().value("threedi/working_dir", "", type=str)
+        if working_dir:
+            self.output_dir_raster.setFilePath(working_dir)
         self.resize(QSize(1600, 850))
 
     def log_feedback(self, feedback_message, level=Qgis.Info):
@@ -112,165 +118,20 @@ class LizardBrowser(uicls, basecls):
             self.pb_add_wms.setDisabled(True)
             self.pb_show_files.setDisabled(True)
 
-    def toggle_raster_selected(self):
-        """Toggle action widgets if any raster is selected."""
-        self.current_raster_instances.clear()
-        selection_model = self.raster_tv.selectionModel()
-        if selection_model.hasSelection():
-            self.pb_add_wms_raster.setEnabled(True)
-            self.pb_download_raster.setEnabled(True)
-            self.grp_single_raster_settings.setEnabled(True)
-        else:
-            self.pb_add_wms_raster.setDisabled(True)
-            self.pb_download_raster.setDisabled(True)
-            self.grp_single_raster_settings.setDisabled(True)
-
     def previous_scenarios(self):
         """Move to the previous matching scenarios page."""
         self.page_sbox.setValue(self.page_sbox.value() - 1)
-
-    def previous_rasters(self):
-        """Move to the previous matching rasters page."""
-        self.page_sbox_raster.setValue(self.page_sbox_raster.value() - 1)
 
     def next_scenarios(self):
         """Move to the next matching scenarios page."""
         self.page_sbox.setValue(self.page_sbox.value() + 1)
 
-    def next_rasters(self):
-        """Move to the next matching rasters page."""
-        self.page_sbox_raster.setValue(self.page_sbox_raster.value() + 1)
-
-    def on_polygon_changed(self, layer):
-        """Refresh field list on clip polygon change."""
-        self.clip_name_field_cbo.setLayer(layer)
-
-    def fetch_scenarios(self):
-        """Fetch and list matching scenarios."""
-        try:
-            searched_text = self.scenario_search_le.text()
-            matching_scenarios_count = count_scenarios_with_name(self.plugin.settings.api_url, searched_text)
-            pages_nr = ceil(matching_scenarios_count / self.TABLE_LIMIT) or 1
-            self.page_sbox.setMaximum(pages_nr)
-            self.page_sbox.setSuffix(f" / {pages_nr}")
-            self.current_scenario_instances.clear()
-            self.scenario_model.clear()
-            self.current_scenario_results.clear()
-            self.scenario_results_model.clear()
-            offset = (self.page_sbox.value() - 1) * self.TABLE_LIMIT
-            header = ["Scenario name", "Model name", "Organisation", "User", "Created", "UUID"]
-            self.scenario_model.setHorizontalHeaderLabels(header)
-            matching_scenarios = self.plugin.downloader.find_scenarios(
-                self.TABLE_LIMIT, offset=offset, name__icontains=searched_text
-            )
-            for scenario_instance in sorted(matching_scenarios, key=itemgetter("created"), reverse=True):
-                scenario_uuid = scenario_instance["uuid"]
-                uuid_item = QStandardItem(scenario_uuid)
-                name_item = QStandardItem(scenario_instance["name"])
-                model_name_item = QStandardItem(scenario_instance["model_name"])
-                organisation_item = QStandardItem(scenario_instance["organisation"]["name"])
-                user_item = QStandardItem(scenario_instance["supplier"])
-                created_item = QStandardItem(scenario_instance["created"].split("T")[0])
-                scenario_items = [name_item, model_name_item, organisation_item, user_item, created_item, uuid_item]
-                self.scenario_model.appendRow(scenario_items)
-                self.current_scenario_instances[scenario_uuid] = scenario_instance
-            for i in range(len(header)):
-                self.scenario_tv.resizeColumnToContents(i)
-        except Exception as e:
-            self.close()
-            error_msg = f"Error: {e}"
-            self.plugin.communication.show_error(error_msg)
-
-    def fetch_rasters(self):
-        """Fetch and list matching rasters."""
-        try:
-            searched_text = self.raster_search_le.text()
-            matching_rasters_count = count_rasters_with_name(self.plugin.settings.api_url, searched_text)
-            pages_nr = ceil(matching_rasters_count / self.TABLE_LIMIT) or 1
-            self.page_sbox_raster.setMaximum(pages_nr)
-            self.page_sbox_raster.setSuffix(f" / {pages_nr}")
-            self.current_raster_instances.clear()
-            self.raster_model.clear()
-            offset = (self.page_sbox_raster.value() - 1) * self.TABLE_LIMIT
-            header = ["🕒", "Name", "Description", "Organisation", "Last update", "UUID"]
-            self.raster_model.setHorizontalHeaderLabels(header)
-            matching_rasters = find_rasters(
-                self.plugin.settings.api_url, self.TABLE_LIMIT, offset=offset, name__icontains=searched_text
-            )
-            for raster_instance in sorted(matching_rasters, key=itemgetter("created"), reverse=True):
-                raster_uuid = raster_instance["uuid"]
-                uuid_item = QStandardItem(raster_uuid)
-                temporal_item = QStandardItem("🕒" if raster_instance["temporal"] else "")
-                name_item = QStandardItem(raster_instance["name"])
-                description_item = QStandardItem(raster_instance["description"])
-                organisation_item = QStandardItem(raster_instance["organisation"]["name"])
-                last_updated_item = QStandardItem(raster_instance["last_modified"].split("T")[0])
-                raster_items = [
-                    temporal_item,
-                    name_item,
-                    description_item,
-                    organisation_item,
-                    last_updated_item,
-                    uuid_item,
-                ]
-                self.raster_model.appendRow(raster_items)
-                self.current_raster_instances[raster_uuid] = raster_instance
-            for i in range(len(header)):
-                self.raster_tv.resizeColumnToContents(i)
-        except Exception as e:
-            self.close()
-            error_msg = f"Error: {e}"
-            self.plugin.communication.show_error(error_msg)
-
-    def fetch_results(self):
-        """Fetch and show selected available scenario result files."""
-        index = self.scenario_tv.currentIndex()
-        if not index.isValid():
-            return
-        current_row = index.row()
-        scenario_uuid_item = self.scenario_model.item(current_row, self.SCENARIO_UUID_COLUMN_IDX)
-        scenario_uuid = scenario_uuid_item.text()
-        scenario_instance = self.current_scenario_instances[scenario_uuid]
-        scenario_results = self.plugin.downloader.get_scenario_instance_results(scenario_uuid)
-        self.current_scenario_results.clear()
-        self.scenario_results_model.clear()
-        header, checkboxes_width = ["Item", "File name"], []
-        self.scenario_results_model.setHorizontalHeaderLabels(header)
-        for row_number, result in enumerate(scenario_results, start=0):
-            result_enabled = True
-            result_id = result["id"]
-            result_name = result["name"]
-            result_attachment_url = result["attachment_url"]
-            result_raster = result["raster"]
-            if result_raster:
-                raster_instance = get_url_raster_instance(self.plugin.downloader.get_api_key(), result_raster)
-                if raster_instance["temporal"]:
-                    result_enabled = False
-                    result_filename = result_name.lower().replace("(timeseries)", "").strip().replace(" ", "_") + ".tif"
-                else:
-                    result_filename = result_name.lower().replace(" ", "_") + ".tif"
-            else:
-                result_filename = result_attachment_url.rsplit("/", 1)[-1]
-            result_checkbox = QCheckBox(result_name)
-            result_checkbox.setEnabled(result_enabled)
-            results_checkbox_item = QStandardItem("")
-            result_filename_item = QStandardItem(result_filename)
-            result_filename_item.setEnabled(result_enabled)
-            checkboxes_width.append(result_checkbox.width())
-            self.scenario_results_model.appendRow([results_checkbox_item, result_filename_item])
-            self.scenario_results_tv.setIndexWidget(self.scenario_results_model.index(row_number, 0), result_checkbox)
-            result["checkbox"] = result_checkbox
-            result["filename"] = result_filename
-            self.current_scenario_results[result_id] = result
-        for i in range(len(header)):
-            self.scenario_results_tv.resizeColumnToContents(i)
-        if checkboxes_width:
-            self.scenario_results_tv.setColumnWidth(0, max(checkboxes_width))
-        self.pb_download.setEnabled(True)
-        self.grp_raster_settings.setEnabled(True)
-        self.toggle_selection_ckb.setEnabled(True)
-        scenario_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(scenario_instance["projection"])
-        self.crs_widget.setCrs(scenario_crs)
+    def search_for_scenarios(self):
+        """Method used for searching scenarios with text typed withing search bar."""
+        self.page_sbox.valueChanged.disconnect(self.fetch_scenarios)
+        self.page_sbox.setValue(1)
+        self.page_sbox.valueChanged.connect(self.fetch_scenarios)
+        self.fetch_scenarios()
 
     def toggle_results(self, checked):
         """Select/deselect all available scenario items."""
@@ -338,6 +199,125 @@ class LizardBrowser(uicls, basecls):
             download_dir = working_dir
         return download_dir
 
+    def fetch_scenarios(self):
+        """Fetch and list matching scenarios."""
+        try:
+            searched_text = self.scenario_search_le.text()
+            matching_scenarios_count = count_scenarios_with_name(self.plugin.settings.api_url, searched_text)
+            pages_nr = ceil(matching_scenarios_count / self.TABLE_LIMIT) or 1
+            self.page_sbox.setMaximum(pages_nr)
+            self.page_sbox.setSuffix(f" / {pages_nr}")
+            self.current_scenario_instances.clear()
+            self.scenario_model.clear()
+            self.current_scenario_results.clear()
+            self.scenario_results_model.clear()
+            offset = (self.page_sbox.value() - 1) * self.TABLE_LIMIT
+            header = ["Scenario name", "Model name", "Organisation", "User", "Created", "UUID"]
+            self.scenario_model.setHorizontalHeaderLabels(header)
+            matching_scenarios = self.plugin.downloader.find_scenarios(
+                self.TABLE_LIMIT, offset=offset, name__icontains=searched_text
+            )
+            for scenario_instance in sorted(matching_scenarios, key=itemgetter("created"), reverse=True):
+                scenario_uuid = scenario_instance["uuid"]
+                uuid_item = QStandardItem(scenario_uuid)
+                name_item = QStandardItem(scenario_instance["name"])
+                model_name_item = QStandardItem(scenario_instance["model_name"])
+                organisation_item = QStandardItem(scenario_instance["organisation"]["name"])
+                user_item = QStandardItem(scenario_instance["supplier"])
+                created_item = QStandardItem(scenario_instance["created"].split("T")[0])
+                scenario_items = [name_item, model_name_item, organisation_item, user_item, created_item, uuid_item]
+                self.scenario_model.appendRow(scenario_items)
+                self.current_scenario_instances[scenario_uuid] = scenario_instance
+            for i in range(len(header)):
+                self.scenario_tv.resizeColumnToContents(i)
+        except Exception as e:
+            self.close()
+            error_msg = f"Error: {e}"
+            self.plugin.communication.show_error(error_msg)
+
+    def fetch_results(self):
+        """Fetch and show selected available scenario result files."""
+        index = self.scenario_tv.currentIndex()
+        if not index.isValid():
+            return
+        current_row = index.row()
+        scenario_uuid_item = self.scenario_model.item(current_row, self.SCENARIO_UUID_COLUMN_IDX)
+        scenario_uuid = scenario_uuid_item.text()
+        scenario_instance = self.current_scenario_instances[scenario_uuid]
+        scenario_results = self.plugin.downloader.get_scenario_instance_results(scenario_uuid)
+        self.current_scenario_results.clear()
+        self.scenario_results_model.clear()
+        header, checkboxes_width = ["Item", "File name"], []
+        self.scenario_results_model.setHorizontalHeaderLabels(header)
+        for row_number, result in enumerate(scenario_results, start=0):
+            result_enabled = True
+            result_id = result["id"]
+            result_name = result["name"]
+            result_attachment_url = result["attachment_url"]
+            result_raster = result["raster"]
+            if result_raster:
+                raster_instance = get_url_raster_instance(self.plugin.downloader.get_api_key(), result_raster)
+                if raster_instance["temporal"]:
+                    result_enabled = False
+                    result_filename = result_name.lower().replace("(timeseries)", "").strip().replace(" ", "_") + ".tif"
+                else:
+                    result_filename = result_name.lower().replace(" ", "_") + ".tif"
+            else:
+                result_filename = result_attachment_url.rsplit("/", 1)[-1]
+            result_checkbox = QCheckBox(result_name)
+            result_checkbox.setEnabled(result_enabled)
+            results_checkbox_item = QStandardItem("")
+            result_filename_item = QStandardItem(result_filename)
+            result_filename_item.setEnabled(result_enabled)
+            checkboxes_width.append(result_checkbox.width())
+            self.scenario_results_model.appendRow([results_checkbox_item, result_filename_item])
+            self.scenario_results_tv.setIndexWidget(self.scenario_results_model.index(row_number, 0), result_checkbox)
+            result["checkbox"] = result_checkbox
+            result["filename"] = result_filename
+            self.current_scenario_results[result_id] = result
+        for i in range(len(header)):
+            self.scenario_results_tv.resizeColumnToContents(i)
+        if checkboxes_width:
+            self.scenario_results_tv.setColumnWidth(0, max(checkboxes_width))
+        self.pb_download.setEnabled(True)
+        self.grp_raster_settings.setEnabled(True)
+        self.toggle_selection_ckb.setEnabled(True)
+        scenario_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(scenario_instance["projection"])
+        self.crs_widget.setCrs(scenario_crs)
+
+    def load_scenario_as_wms_layers(self):
+        """Loading selected scenario as a set of the WMS layers."""
+        wms_provider = "wms"
+        index = self.scenario_tv.currentIndex()
+        if index.isValid():
+            current_row = index.row()
+            scenario_uuid_item = self.scenario_model.item(current_row, self.SCENARIO_UUID_COLUMN_IDX)
+            scenario_uuid = scenario_uuid_item.text()
+            scenario_name_item = self.scenario_model.item(current_row, self.SCENARIO_NAME_COLUMN_IDX)
+            scenario_name = scenario_name_item.text()
+            get_capabilities_url = f"{self.plugin.settings.wms_url}scenario_{scenario_uuid}/?request=GetCapabilities"
+            layers_to_add = []
+            try:
+                for layer_name, layer_uri in get_capabilities_layer_uris(get_capabilities_url):
+                    layer = QgsRasterLayer(layer_uri, layer_name, wms_provider)
+                    layers_to_add.append(layer)
+            except WMSServiceException as e:
+                error_message = f"Loading of the requested scenario WMS layers failed due to following error:\n{e}"
+                self.log_feedback(error_message, Qgis.Critical)
+                self.plugin.communication.show_error(error_message)
+                return
+            scenario_group = create_tree_group(scenario_name)
+            extent = QgsRectangle()
+            extent.setMinimal()
+            for wms_layer in layers_to_add:
+                extent.combineExtentWith(wms_layer.extent())
+                wms_layer.setCustomProperty("identify/format", "Text")
+                add_layer_to_group(scenario_group, wms_layer)
+            map_canvas = self.plugin.iface.mapCanvas()
+            map_canvas.setExtent(extent)
+            map_canvas.refresh()
+            self.log_feedback(f"WMS layers for scenario '{scenario_name}' added to the project.")
+
     def download_results(self):
         """Download selected (checked) result files."""
         index = self.scenario_tv.currentIndex()
@@ -382,13 +362,13 @@ class LizardBrowser(uicls, basecls):
         self.plugin.lizard_downloader_pool.start(scenario_items_downloader)
         self.log_feedback(f"Scenario '{scenario_name}' results download task added to the queue.")
 
-    def on_download_progress(self, scenario_instance, progress_message, current_progress, total_progress):
+    def on_download_progress(self, downloaded_item_instance, progress_message, current_progress, total_progress):
         """Feedback on download progress signal."""
-        scenario_name = scenario_instance["name"]
-        msg = progress_message if progress_message else f"Downloading files of the scenario: '{scenario_name}'..."
+        downloaded_item_name = downloaded_item_instance["name"]
+        msg = progress_message if progress_message else f"Downloading '{downloaded_item_name}' files..."
         self.plugin.communication.progress_bar(msg, 0, total_progress, current_progress, clear_msg_bar=True)
 
-    def on_download_finished(self, scenario_instance, downloaded_files, message):
+    def on_download_finished(self, downloaded_item_instance, downloaded_files, message):
         """Feedback on download finished signal."""
         self.plugin.communication.clear_message_bar()
         self.plugin.communication.bar_info(message)
@@ -396,26 +376,19 @@ class LizardBrowser(uicls, basecls):
         file_types_to_add = {"tif", "vrt"}
         files_to_add = [fname for fname in downloaded_files.keys() if fname.rsplit(".", 1)[-1] in file_types_to_add]
         if file_types_to_add:
-            scenario_name = scenario_instance["name"]
-            scenario_grp = create_tree_group(scenario_name)
+            downloaded_item_name = downloaded_item_instance["name"]
+            downloaded_item_grp = create_tree_group(downloaded_item_name)
             for raster_filename in files_to_add:
                 raster_filepath = downloaded_files[raster_filename]
                 raster_layer = QgsRasterLayer(raster_filepath, raster_filename, "gdal")
-                add_layer_to_group(scenario_grp, raster_layer)
-            scenario_grp.setExpanded(False)
+                add_layer_to_group(downloaded_item_grp, raster_layer)
+            downloaded_item_grp.setExpanded(False)
 
     def on_download_failed(self, scenario_instance, error_message):
         """Feedback on download failed signal."""
         self.plugin.communication.clear_message_bar()
         self.plugin.communication.bar_error(error_message)
         self.log_feedback(error_message, Qgis.Critical)
-
-    def search_for_scenarios(self):
-        """Method used for searching scenarios with text typed withing search bar."""
-        self.page_sbox.valueChanged.disconnect(self.fetch_scenarios)
-        self.page_sbox.setValue(1)
-        self.page_sbox.valueChanged.connect(self.fetch_scenarios)
-        self.fetch_scenarios()
 
     def search_for_rasters(self):
         """Method used for searching rasters with text typed withing search bar."""
@@ -424,38 +397,90 @@ class LizardBrowser(uicls, basecls):
         self.page_sbox_raster.valueChanged.connect(self.fetch_rasters)
         self.fetch_rasters()
 
-    def load_scenario_as_wms_layers(self):
-        """Loading selected scenario as a set of the WMS layers."""
-        wms_provider = "wms"
-        index = self.scenario_tv.currentIndex()
-        if index.isValid():
-            current_row = index.row()
-            scenario_uuid_item = self.scenario_model.item(current_row, self.SCENARIO_UUID_COLUMN_IDX)
-            scenario_uuid = scenario_uuid_item.text()
-            scenario_name_item = self.scenario_model.item(current_row, self.SCENARIO_NAME_COLUMN_IDX)
-            scenario_name = scenario_name_item.text()
-            get_capabilities_url = f"{self.plugin.settings.wms_url}scenario_{scenario_uuid}/?request=GetCapabilities"
-            layers_to_add = []
-            try:
-                for layer_name, layer_uri in get_capabilities_layer_uris(get_capabilities_url):
-                    layer = QgsRasterLayer(layer_uri, layer_name, wms_provider)
-                    layers_to_add.append(layer)
-            except WMSServiceException as e:
-                error_message = f"Loading of the requested scenario WMS layers failed due to following error:\n{e}"
-                self.log_feedback(error_message, Qgis.Critical)
-                self.plugin.communication.show_error(error_message)
-                return
-            scenario_group = create_tree_group(scenario_name)
-            extent = QgsRectangle()
-            extent.setMinimal()
-            for wms_layer in layers_to_add:
-                extent.combineExtentWith(wms_layer.extent())
-                wms_layer.setCustomProperty("identify/format", "Text")
-                add_layer_to_group(scenario_group, wms_layer)
-            map_canvas = self.plugin.iface.mapCanvas()
-            map_canvas.setExtent(extent)
-            map_canvas.refresh()
-            self.log_feedback(f"WMS layers for scenario '{scenario_name}' added to the project.")
+    def previous_rasters(self):
+        """Move to the previous matching rasters page."""
+        self.page_sbox_raster.setValue(self.page_sbox_raster.value() - 1)
+
+    def next_rasters(self):
+        """Move to the next matching rasters page."""
+        self.page_sbox_raster.setValue(self.page_sbox_raster.value() + 1)
+
+    def on_extent_changed(self):
+        """Enable/disable polygon settings group."""
+        if self.use_polygon_extent_rb.isChecked():
+            self.grp_polygon_settings.setEnabled(True)
+        else:
+            self.grp_polygon_settings.setDisabled(True)
+
+    def on_polygon_changed(self, layer):
+        """Refresh field list on clip polygon change."""
+        self.clip_name_field_cbo.setLayer(layer)
+
+    def toggle_raster_selected(self):
+        """Toggle action widgets if any raster is selected."""
+        selection_model = self.raster_tv.selectionModel()
+        self.filename_le_raster.clear()
+        if selection_model.hasSelection():
+            self.pb_add_wms_raster.setEnabled(True)
+            self.pb_download_raster.setEnabled(True)
+            self.grp_single_raster_settings.setEnabled(True)
+            index = self.raster_tv.currentIndex()
+            if index.isValid():
+                current_row = index.row()
+                raster_uuid_item = self.raster_model.item(current_row, self.RASTER_UUID_COLUMN_IDX)
+                raster_uuid = raster_uuid_item.text()
+                raster_instance = self.current_raster_instances[raster_uuid]
+                self.filename_le_raster.setText(raster_instance["name"])
+                raster_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(raster_instance["projection"])
+                self.crs_widget_raster.setCrs(raster_crs)
+                raster_resolution = raster_instance["pixelsize_x"]
+                self.pixel_size_sbox_raster.setValue(raster_resolution if raster_resolution else 0.0)
+        else:
+            self.pb_add_wms_raster.setDisabled(True)
+            self.pb_download_raster.setDisabled(True)
+            self.grp_single_raster_settings.setDisabled(True)
+            self.pixel_size_sbox_raster.setValue(0.0)
+
+    def fetch_rasters(self):
+        """Fetch and list matching rasters."""
+        try:
+            searched_text = self.raster_search_le.text()
+            matching_rasters_count = count_rasters_with_name(self.plugin.settings.api_url, searched_text)
+            pages_nr = ceil(matching_rasters_count / self.TABLE_LIMIT) or 1
+            self.page_sbox_raster.setMaximum(pages_nr)
+            self.page_sbox_raster.setSuffix(f" / {pages_nr}")
+            self.current_raster_instances.clear()
+            self.raster_model.clear()
+            offset = (self.page_sbox_raster.value() - 1) * self.TABLE_LIMIT
+            header = ["🕒", "Name", "Description", "Organisation", "Last update", "UUID"]
+            self.raster_model.setHorizontalHeaderLabels(header)
+            matching_rasters = find_rasters(
+                self.plugin.settings.api_url, self.TABLE_LIMIT, offset=offset, name__icontains=searched_text
+            )
+            for raster_instance in sorted(matching_rasters, key=itemgetter("created"), reverse=True):
+                raster_uuid = raster_instance["uuid"]
+                uuid_item = QStandardItem(raster_uuid)
+                temporal_item = QStandardItem("🕒" if raster_instance["temporal"] else "")
+                name_item = QStandardItem(raster_instance["name"])
+                description_item = QStandardItem(raster_instance["description"])
+                organisation_item = QStandardItem(raster_instance["organisation"]["name"])
+                last_updated_item = QStandardItem(raster_instance["last_modified"].split("T")[0])
+                raster_items = [
+                    temporal_item,
+                    name_item,
+                    description_item,
+                    organisation_item,
+                    last_updated_item,
+                    uuid_item,
+                ]
+                self.raster_model.appendRow(raster_items)
+                self.current_raster_instances[raster_uuid] = raster_instance
+            for i in range(len(header)):
+                self.raster_tv.resizeColumnToContents(i)
+        except Exception as e:
+            self.close()
+            error_msg = f"Error: {e}"
+            self.plugin.communication.show_error(error_msg)
 
     def load_raster_as_wms_layers(self):
         """Loading selected scenario as a set of the WMS layers."""
@@ -489,3 +514,61 @@ class LizardBrowser(uicls, basecls):
             map_canvas.setExtent(extent)
             map_canvas.refresh()
             self.log_feedback(f"WMS layers for raster '{raster_name}' added to the project.")
+
+    def download_raster_file(self):
+        """Download selected raster."""
+        index = self.raster_tv.currentIndex()
+        if not index.isValid():
+            return
+        current_row = index.row()
+        raster_uuid_item = self.raster_model.item(current_row, self.RASTER_UUID_COLUMN_IDX)
+        raster_uuid = raster_uuid_item.text()
+        raster_instance = self.current_raster_instances[raster_uuid]
+        download_dir = self.output_dir_raster.filePath()
+        if not download_dir:
+            self.plugin.communication.bar_info("Output directory not specified - raster downloading canceled..")
+            return
+        try:
+            try_to_write(download_dir)
+        except (PermissionError, OSError):
+            self.plugin.communication.bar_warn(
+                "Can't write to the selected location. Please select a folder to which you have write permission."
+            )
+            return
+        raster_name = self.filename_le_raster.text()
+        no_data = self.no_data_sbox_raster.value()
+        resolution = self.pixel_size_sbox_raster.value()
+        resolution = resolution if resolution else None
+        projection = self.crs_widget_raster.crs().authid()
+        if self.use_canvas_extent_rb.isChecked():
+            polygon_id, polygon_name = 0, ""
+            polygon_wkt = self.plugin.iface.mapCanvas().extent().asWktPolygon()
+            named_extent_polygons = {(polygon_id, polygon_name): polygon_wkt}
+            crop_to_polygon = False
+        else:
+            polygon_layer = self.clip_polygon_cbo.currentLayer()
+            polygon_name_field = self.clip_name_field_cbo.currentField()
+            if self.selected_features_ckb.isChecked():
+                features_iterator = polygon_layer.selectedFeatures()
+            else:
+                features_iterator = polygon_layer.getFeatures()
+            named_extent_polygons = {
+                (feat.id(), str(feat[polygon_name_field])): feat.geometry().asWkt() for feat in features_iterator
+            }
+            crop_to_polygon = self.clip_to_polygon_ckb.isChecked()
+        raster_downloader = RasterDownloader(
+            self.plugin.downloader,
+            raster_instance,
+            raster_name,
+            download_dir,
+            named_extent_polygons,
+            crop_to_polygon,
+            no_data,
+            resolution,
+            projection,
+        )
+        raster_downloader.signals.download_progress.connect(self.on_download_progress)
+        raster_downloader.signals.download_finished.connect(self.on_download_finished)
+        raster_downloader.signals.download_failed.connect(self.on_download_failed)
+        self.plugin.lizard_downloader_pool.start(raster_downloader)
+        self.log_feedback(f"Raster '{raster_name}' download task added to the queue.")

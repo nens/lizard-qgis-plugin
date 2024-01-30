@@ -7,8 +7,19 @@ from xml.etree import ElementTree
 
 import requests
 from osgeo import gdal
-from qgis.core import QgsApplication, QgsAuthMethodConfig, QgsLayerTreeGroup, QgsLayerTreeLayer, QgsProject
-from qgis.PyQt.QtCore import QSettings
+from qgis._core import QgsFeature
+from qgis.core import (
+    QgsApplication,
+    QgsAuthMethodConfig,
+    QgsField,
+    QgsGeometry,
+    QgsLayerTreeGroup,
+    QgsLayerTreeLayer,
+    QgsProject,
+    QgsVectorFileWriter,
+    QgsVectorLayer,
+)
+from qgis.PyQt.QtCore import QSettings, QVariant
 
 LIZARD_SETTINGS_ENTRY = "lizard_qgis_plugin"
 LIZARD_AUTHCFG_ENTRY = f"{LIZARD_SETTINGS_ENTRY}/authcfg"
@@ -223,6 +234,58 @@ def split_scenario_extent(scenario_instance, max_pixel_count=1 * 10**8):
     return spatial_bounds
 
 
+def split_raster_extent(raster_instance, bbox, resolution=None, max_pixel_count=1 * 10**8):
+    """Split raster task spatial bounds to fit in to maximum pixel count limit."""
+    x1_src = raster_instance["origin_x"]
+    y1_src = raster_instance["origin_y"]
+    x2_src = raster_instance["upper_bound_x"]
+    y2_src = raster_instance["upper_bound_y"]
+    x1, y1, x2, y2 = bbox
+    if x1_src > x1:
+        x1 = x1_src
+    if x2_src < x2:
+        x2 = x2_src
+    if y1_src > y1:
+        y1 = y1_src
+    if y2_src < y2:
+        y2 = y2_src
+    if resolution is None:
+        pixelsize_x = abs(raster_instance["pixelsize_x"])
+        pixelsize_y = abs(raster_instance["pixelsize_y"])
+    else:
+        pixelsize_x = resolution
+        pixelsize_y = resolution
+    width = abs((x2 - x1) / pixelsize_x)
+    height = abs((y2 - y1) / pixelsize_y)
+    if not width.is_integer():
+        width = ceil(width)
+        x2 = (width * pixelsize_x) + x1
+    if not height.is_integer():
+        height = ceil(height)
+        y2 = (height * pixelsize_y) + y1
+    raster_pixel_count = width * height
+    if raster_pixel_count > max_pixel_count:
+        max_pixel_per_axis = int(sqrt(max_pixel_count))
+        columns_count = ceil(width / max_pixel_per_axis)
+        rows_count = ceil(height / max_pixel_per_axis)
+        sub_width = max_pixel_per_axis * pixelsize_x
+        sub_height = max_pixel_per_axis * pixelsize_y
+        bboxes = []
+        for column_idx in range(columns_count):
+            sub_x1 = x1 + (column_idx * sub_width)
+            sub_x2 = sub_x1 + sub_width
+            for row_idx in range(rows_count):
+                sub_y1 = y1 + (row_idx * sub_height)
+                sub_y2 = sub_y1 + sub_height
+                sub_bbox = (sub_x1, sub_y1, sub_x2, sub_y2)
+                bboxes.append(sub_bbox)
+        spatial_bounds = (bboxes, sub_width, sub_height)
+    else:
+        bboxes = [(x1, y1, x2, y2)]
+        spatial_bounds = (bboxes, width, height)
+    return spatial_bounds
+
+
 def get_url_raster_instance(api_key, raster_url):
     """Return raster instance from the raster URL."""
     r = requests.get(
@@ -270,3 +333,53 @@ def build_vrt(output_filepath, raster_filepaths, **vrt_options):
     options = gdal.BuildVRTOptions(**vrt_options)
     vrt_ds = gdal.BuildVRT(output_filepath, raster_filepaths, options=options)
     vrt_ds = None
+
+
+def wkt_polygon_layer(polygon_wkt, polygon_layer_name="clip_layer", epsg="EPSG:4326"):
+    """Spawn (multi)polygon layer out of single WKT polygon geometry."""
+    geometry_type = "MultiPolygon" if polygon_wkt.lower().startswith("multi") else "Polygon"
+    uri = f"{geometry_type}?crs={epsg}"
+    memory_polygon_layer = QgsVectorLayer(uri, polygon_layer_name, "memory")
+    memory_polygon_layer_dt = memory_polygon_layer.dataProvider()
+    memory_polygon_layer_dt.addAttributes([QgsField("id", QVariant.Int)])
+    memory_polygon_layer.updateFields()
+    cut_line_feat = QgsFeature(memory_polygon_layer.fields())
+    cut_line_feat.setGeometry(QgsGeometry.fromWkt(polygon_wkt))
+    memory_polygon_layer.startEditing()
+    memory_polygon_layer.addFeature(cut_line_feat)
+    memory_polygon_layer.commitChanges()
+    return memory_polygon_layer
+
+
+def layer_to_gpkg(layer, gpkg_filename, overwrite=False, driver_name="GPKG"):
+    """Function which saves memory layer into GeoPackage file."""
+    transform_context = QgsProject.instance().transformContext()
+    options = QgsVectorFileWriter.SaveVectorOptions()
+    options.actionOnExistingFile = (
+        QgsVectorFileWriter.CreateOrOverwriteLayer if overwrite is False else QgsVectorFileWriter.CreateOrOverwriteFile
+    )
+    fields = layer.fields()
+    valid_indexes = [fields.lookupField(fname) for fname in fields.names() if fname != "fid"]
+    options.attributes = valid_indexes
+    options.driverName = driver_name
+    options.layerName = layer.name()
+    writer, error = QgsVectorFileWriter.writeAsVectorFormatV2(layer, gpkg_filename, transform_context, options)
+    return writer, error
+
+
+def clip_raster(raster_src, polygon_clip_gpkg, polygon_clip_layer="clip_layer", no_data=-9999):
+    """Clip raster with given polygon geometry."""
+    warp_options = gdal.WarpOptions(
+        dstNodata=no_data,
+        cutlineDSName=polygon_clip_gpkg,
+        cutlineLayer=polygon_clip_layer,
+        cropToCutline=True,
+        multithread=True,
+        warpOptions=["NUM_THREADS=ALL_CPUS"],
+    )
+    raster_location = os.path.dirname(raster_src)
+    raster_filename = os.path.basename(raster_src)
+    raster_dst = os.path.join(raster_location, f"clip_{raster_filename}")
+    gdal.Warp(raster_dst, raster_src, options=warp_options)
+    os.remove(raster_src)
+    os.rename(raster_dst, raster_dst)

@@ -14,12 +14,12 @@ from lizard_qgis_plugin.widgets.settings import SettingsDialog
 try:
     from threedi_scenario_downloader import downloader
 
-    from lizard_qgis_plugin.widgets.scenario_archive_browser import LizardBrowser
+    from lizard_qgis_plugin.widgets.lizard_archive_browser import LizardBrowser
 except ImportError:
     patch_wheel_imports()
     from threedi_scenario_downloader import downloader
 
-    from lizard_qgis_plugin.widgets.scenario_archive_browser import LizardBrowser
+    from lizard_qgis_plugin.widgets.lizard_archive_browser import LizardBrowser
 
 
 def classFactory(iface):

@@ -1,24 +1,35 @@
 # Lizard plugin for QGIS, licensed under GPLv2 or (at your option) any later version
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 import os
+import tempfile
 import time
+import uuid
 from collections import defaultdict
 
 import requests
+from qgis.core import QgsGeometry
 from qgis.PyQt.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
 from threedi_mi_utils import bypass_max_path_limit
 
-from lizard_qgis_plugin.utils import build_vrt, create_raster_tasks, split_scenario_extent
+from lizard_qgis_plugin.utils import (
+    build_vrt,
+    clip_raster,
+    create_raster_tasks,
+    layer_to_gpkg,
+    split_raster_extent,
+    split_scenario_extent,
+    wkt_polygon_layer,
+)
 
 
-class ScenarioDownloadError(Exception):
-    """Scenario files downloader exception class."""
+class LizardDownloadError(Exception):
+    """Lizard files downloader exception class."""
 
     pass
 
 
-class ScenarioItemsDownloaderSignals(QObject):
-    """Definition of the download worker signals."""
+class LizardDownloaderSignals(QObject):
+    """Definition of the items download worker signals."""
 
     download_progress = pyqtSignal(dict, str, int, int)
     download_finished = pyqtSignal(dict, dict, str)
@@ -51,7 +62,7 @@ class ScenarioItemsDownloader(QRunnable):
         if raster_results:
             self.number_of_steps += len(self.raster_results) + 1  # Extra step for spawning raster creation tasks
         self.percentage_per_step = self.total_progress / self.number_of_steps
-        self.signals = ScenarioItemsDownloaderSignals()
+        self.signals = LizardDownloaderSignals()
         self.downloaded_files = {}
 
     def download_raw_results(self):
@@ -65,7 +76,7 @@ class ScenarioItemsDownloader(QRunnable):
                 self.downloader.download_file(attachment_url, target_filepath)
             except Exception as e:
                 error_msg = f"Download of the {attachment_filename} failed due to the following error: {e}"
-                raise ScenarioDownloadError(error_msg)
+                raise LizardDownloadError(error_msg)
             self.downloaded_files[attachment_filename] = target_filepath
 
     def download_raster_results(self):
@@ -109,7 +120,7 @@ class ScenarioItemsDownloader(QRunnable):
                     continue
                 else:
                     error_msg = f"Task {task_id} failed, status was: {task_status}"
-                    raise ScenarioDownloadError(error_msg)
+                    raise LizardDownloadError(error_msg)
             time.sleep(self.TASK_CHECK_SLEEP_TIME)
         # Download tasks files
         rasters_per_code = defaultdict(list)
@@ -150,7 +161,7 @@ class ScenarioItemsDownloader(QRunnable):
             self.report_finished(
                 "Scenario items download finished. " f"Downloaded items are in: {self.scenario_download_dir}"
             )
-        except ScenarioDownloadError as e:
+        except LizardDownloadError as e:
             self.report_failure(str(e))
         except Exception as e:
             error_msg = f"Download failed due to the following error: {e}"
@@ -172,3 +183,149 @@ class ScenarioItemsDownloader(QRunnable):
     def report_finished(self, message):
         """Report worker finished message."""
         self.signals.download_finished.emit(self.scenario_instance, self.downloaded_files, message)
+
+
+class RasterDownloader(QRunnable):
+    """Worker object responsible for downloading rasters."""
+
+    TASK_CHECK_SLEEP_TIME = 5
+
+    def __init__(
+        self,
+        downloader,
+        raster_instance,
+        raster_name,
+        download_dir,
+        named_extent_polygons,
+        crop_to_polygons,
+        no_data,
+        resolution,
+        projection,
+    ):
+        super().__init__()
+        self.downloader = downloader
+        self.raster_instance = raster_instance
+        self.raster_id = raster_instance["uuid"]
+        self.raster_name = raster_name
+        self.raster_download_dir = os.path.join(download_dir, str(self.raster_name))
+        self.named_extent_polygons = named_extent_polygons
+        self.crop_to_polygons = crop_to_polygons
+        self.no_data = no_data
+        self.resolution = resolution
+        self.projection = projection
+        self.total_progress = 100
+        self.current_step = 0
+        self.number_of_steps = len(self.named_extent_polygons) + 1  # Extra step for spawning raster creation tasks
+        self.percentage_per_step = self.total_progress / self.number_of_steps
+        self.signals = LizardDownloaderSignals()
+        self.downloaded_files = {}
+
+    def download_raster_files(self):
+        raster_tasks, processed_tasks = {}, {}
+        success_statuses = {"SUCCESS"}
+        in_progress_statuses = {"PENDING", "UNKNOWN", "STARTED", "RETRY"}
+        # Create tasks
+        progress_msg = f"Spawning raster tasks and preparing for download (raster: '{self.raster_name}')..."
+        self.report_progress(progress_msg)
+        lizard_url = self.downloader.LIZARD_URL
+        api_key = self.downloader.get_api_key()
+        # Raster tasks for each extent
+        for polygon_key, polygon_wkt in self.named_extent_polygons.items():
+            polygon_fid, polygon_name = polygon_key
+            raster_name = f"{self.raster_name} {polygon_fid} {polygon_name}" if polygon_name else self.raster_name
+            polygon_geometry = QgsGeometry.fromWkt(polygon_wkt)
+            bbox = polygon_geometry.boundingBox()
+            bbox_as_list = [bbox.xMinimum(), bbox.yMinimum(), bbox.xMaximum(), bbox.yMaximum()]
+            spatial_bounds = split_raster_extent(self.raster_instance, bbox_as_list, self.resolution)
+            tasks = create_raster_tasks(
+                lizard_url, api_key, self.raster_instance, spatial_bounds, self.projection, self.no_data
+            )
+            is_chunked_raster = len(tasks) > 1
+            raster_tasks[polygon_key] = {}
+            for raster_task_idx, task in enumerate(tasks, 1):
+                task_id = task["task_id"]
+                if is_chunked_raster:
+                    raster_filename = f"{raster_name}_{raster_task_idx:02d}.tif"
+                else:
+                    raster_filename = f"{raster_name}.tif"
+                raster_tasks[polygon_key][task_id] = raster_filename
+                processed_tasks[task_id] = False
+        # Check status of task and download
+        while not all(processed_tasks.values()):
+            for task_id, processed in processed_tasks.items():
+                if processed:
+                    continue
+                task_status = self.downloader.get_task_status(task_id)
+                if task_status in success_statuses:
+                    processed_tasks[task_id] = True
+                elif task_status in in_progress_statuses:
+                    continue
+                else:
+                    error_msg = f"Task {task_id} failed, status was: {task_status}"
+                    raise LizardDownloadError(error_msg)
+            time.sleep(self.TASK_CHECK_SLEEP_TIME)
+        # Download tasks files
+        for polygon_key, polygon_tasks in raster_tasks.items():
+            polygon_raster_filepaths = []
+            for task_id, raster_filename in polygon_tasks.items():
+                progress_msg = f"Downloading '{raster_filename}' (raster: '{self.raster_name}')..."
+                self.report_progress(progress_msg, increase_current_step=False)
+                raster_filepath = bypass_max_path_limit(os.path.join(self.raster_download_dir, raster_filename))
+                self.downloader.download_task(task_id, raster_filepath)
+                self.downloaded_files[raster_filename] = raster_filepath
+                polygon_raster_filepaths.append(raster_filepath)
+            self.report_progress(progress_msg, increase_current_step=True)
+            # Clip raster with clip polygon if option checked.
+            if self.crop_to_polygons:
+                temp_dir = tempfile.gettempdir()
+                crop_polygon_wkt = self.named_extent_polygons[polygon_key]
+                clip_polygon_layer = wkt_polygon_layer(crop_polygon_wkt, epsg=self.projection)
+                temp_clip_gpkg = os.path.join(temp_dir, f"clip_polygon_{uuid.uuid4()}.gpkg")
+                layer_to_gpkg(clip_polygon_layer, temp_clip_gpkg, overwrite=True)
+                for raster_filepath in polygon_raster_filepaths:
+                    clip_raster(raster_filepath, temp_clip_gpkg, no_data=self.no_data_value)
+            # Build VRT if needed
+            vrt_options = {"resolution": "average", "resampleAlg": "nearest", "srcNodata": self.no_data}
+            if len(polygon_tasks) > 1:
+                first_raster_filepath = polygon_raster_filepaths[0]
+                vrt_filepath = first_raster_filepath.replace("_01", "").replace(".tif", ".vrt")
+                vrt_filename = os.path.basename(vrt_filepath)
+                progress_msg = f"Building VRT: '{vrt_filepath}'..."
+                self.report_progress(progress_msg, increase_current_step=False)
+                build_vrt(vrt_filepath, polygon_raster_filepaths, **vrt_options)
+                self.downloaded_files[vrt_filename] = vrt_filepath
+                for raster_filepath in polygon_raster_filepaths:
+                    raster_filename = os.path.basename(raster_filepath)
+                    del self.downloaded_files[raster_filename]
+
+    @pyqtSlot()
+    def run(self):
+        """Downloading simulation results files."""
+        try:
+            self.report_progress(increase_current_step=False)
+            if not os.path.exists(self.raster_download_dir):
+                os.makedirs(self.raster_download_dir)
+            self.download_raster_files()
+            self.report_finished("Raster download finished. " f"Downloaded files are in: {self.raster_download_dir}")
+        except LizardDownloadError as e:
+            self.report_failure(str(e))
+        except Exception as e:
+            error_msg = f"Download failed due to the following error: {e}"
+            self.report_failure(error_msg)
+
+    def report_progress(self, progress_message=None, increase_current_step=True):
+        """Report worker progress."""
+        current_progress = int(self.current_step * self.percentage_per_step)
+        if increase_current_step:
+            self.current_step += 1
+        self.signals.download_progress.emit(
+            self.raster_instance, progress_message, current_progress, self.total_progress
+        )
+
+    def report_failure(self, error_message):
+        """Report worker failure message."""
+        self.signals.download_failed.emit(self.raster_instance, error_message)
+
+    def report_finished(self, message):
+        """Report worker finished message."""
+        self.signals.download_finished.emit(self.raster_instance, self.downloaded_files, message)
