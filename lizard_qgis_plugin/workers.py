@@ -15,6 +15,7 @@ from lizard_qgis_plugin.utils import (
     build_vrt,
     clip_raster,
     create_raster_tasks,
+    download_file,
     layer_to_gpkg,
     split_raster_extent,
     split_scenario_extent,
@@ -271,7 +272,8 @@ class RasterDownloader(QRunnable):
                 progress_msg = f"Downloading '{raster_filename}' (raster: '{self.raster_name}')..."
                 self.report_progress(progress_msg, increase_current_step=False)
                 raster_filepath = bypass_max_path_limit(os.path.join(self.raster_download_dir, raster_filename))
-                self.downloader.download_task(task_id, raster_filepath)
+                raster_url = self.downloader.get_task_download_url(task_id)
+                download_file(raster_url, raster_filepath)
                 self.downloaded_files[raster_filename] = raster_filepath
                 polygon_raster_filepaths.append(raster_filepath)
             self.report_progress(progress_msg, increase_current_step=True)
@@ -283,7 +285,7 @@ class RasterDownloader(QRunnable):
                 temp_clip_gpkg = os.path.join(temp_dir, f"clip_polygon_{uuid.uuid4()}.gpkg")
                 layer_to_gpkg(clip_polygon_layer, temp_clip_gpkg, overwrite=True)
                 for raster_filepath in polygon_raster_filepaths:
-                    clip_raster(raster_filepath, temp_clip_gpkg, no_data=self.no_data_value)
+                    clip_raster(raster_filepath, temp_clip_gpkg, no_data=self.no_data)
             # Build VRT if needed
             vrt_options = {"resolution": "average", "resampleAlg": "nearest", "srcNodata": self.no_data}
             if len(polygon_tasks) > 1:

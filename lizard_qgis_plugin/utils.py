@@ -328,6 +328,17 @@ def create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, projection=
     return raster_tasks
 
 
+def download_file(url, filepath):
+    """Download a file using given URL (try with credentials and retry without it in case of code 400)."""
+    r = requests.get(url, auth=("__key__", get_api_key_auth_manager()), stream=True)
+    if r.status_code == 400:
+        r = requests.get(url, stream=True)
+    r.raise_for_status()
+    with open(filepath, "wb") as file:
+        for chunk in r.iter_content(1024 * 1024 * 10):
+            file.write(chunk)
+
+
 def build_vrt(output_filepath, raster_filepaths, **vrt_options):
     """Build VRT for the list of rasters."""
     options = gdal.BuildVRTOptions(**vrt_options)
@@ -382,4 +393,4 @@ def clip_raster(raster_src, polygon_clip_gpkg, polygon_clip_layer="clip_layer", 
     raster_dst = os.path.join(raster_location, f"clip_{raster_filename}")
     gdal.Warp(raster_dst, raster_src, options=warp_options)
     os.remove(raster_src)
-    os.rename(raster_dst, raster_dst)
+    os.rename(raster_dst, raster_src)
