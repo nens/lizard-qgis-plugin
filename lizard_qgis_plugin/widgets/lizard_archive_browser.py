@@ -8,7 +8,9 @@ from qgis.core import (
     Qgis,
     QgsCoordinateReferenceSystem,
     QgsFieldProxyModel,
+    QgsGeometry,
     QgsMapLayerProxyModel,
+    QgsProject,
     QgsRasterLayer,
     QgsRectangle,
 )
@@ -28,6 +30,7 @@ from lizard_qgis_plugin.utils import (
     find_rasters,
     get_capabilities_layer_uris,
     get_url_raster_instance,
+    reproject_geometry,
     try_to_write,
 )
 from lizard_qgis_plugin.workers import RasterDownloader, ScenarioItemsDownloader
@@ -147,9 +150,10 @@ class LizardBrowser(uicls, basecls):
             try:
                 try_to_write(download_dir)
             except (PermissionError, OSError):
-                self.plugin.communication.bar_warn(
+                self.plugin.communication.show_warn(
                     "Can't write to the selected location. Please select a folder to which you have write permission."
                 )
+                self.raise_()
                 return
             return download_dir
 
@@ -525,37 +529,65 @@ class LizardBrowser(uicls, basecls):
         raster_uuid = raster_uuid_item.text()
         raster_instance = self.current_raster_instances[raster_uuid]
         download_dir = self.output_dir_raster.filePath()
-        if not download_dir:
-            self.plugin.communication.bar_info("Output directory not specified - raster downloading canceled..")
-            return
-        try:
-            try_to_write(download_dir)
-        except (PermissionError, OSError):
-            self.plugin.communication.bar_warn(
-                "Can't write to the selected location. Please select a folder to which you have write permission."
-            )
-            return
         raster_name = self.filename_le_raster.text()
         no_data = self.no_data_sbox_raster.value()
         resolution = self.pixel_size_sbox_raster.value()
         resolution = resolution if resolution else None
         projection = self.crs_widget_raster.crs().authid()
+        target_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(projection)
+        if not download_dir:
+            self.plugin.communication.show_warn("Output directory not specified - raster downloading canceled..")
+            self.raise_()
+            return
+        if not raster_name:
+            self.plugin.communication.show_warn("Output filename not specified - raster downloading canceled..")
+            self.raise_()
+            return
+        try:
+            try_to_write(download_dir)
+        except (PermissionError, OSError):
+            self.plugin.communication.show_warn(
+                "Can't write to the selected location. Please select a folder to which you have write permission."
+            )
+            self.raise_()
+            return
+        # If map canvas extent
         if self.use_canvas_extent_rb.isChecked():
+            project_crs = QgsProject.instance().crs()
             polygon_id, polygon_name = 0, ""
             polygon_wkt = self.plugin.iface.mapCanvas().extent().asWktPolygon()
-            named_extent_polygons = {(polygon_id, polygon_name): polygon_wkt}
+            polygon_geom = QgsGeometry.fromWkt(polygon_wkt)
+            polygon_geom = reproject_geometry(polygon_geom, project_crs, target_crs)
+            named_extent_polygons = {(polygon_id, polygon_name): polygon_geom.asWkt()}
             crop_to_polygon = False
+        # If polygon extent
         else:
             polygon_layer = self.clip_polygon_cbo.currentLayer()
+            if not polygon_layer:
+                self.plugin.communication.show_warn(
+                    "Clip polygon layer is not specified - raster downloading canceled.."
+                )
+                self.raise_()
+                return
             polygon_name_field = self.clip_name_field_cbo.currentField()
+            if not polygon_name_field:
+                self.plugin.communication.show_warn(
+                    "Clip polygon layer name field is not specified - raster downloading canceled.."
+                )
+                self.raise_()
+                return
             if self.selected_features_ckb.isChecked():
                 features_iterator = polygon_layer.selectedFeatures()
             else:
                 features_iterator = polygon_layer.getFeatures()
-            named_extent_polygons = {
-                (feat.id(), str(feat[polygon_name_field])): feat.geometry().asWkt() for feat in features_iterator
-            }
+            polygon_layer_crs = polygon_layer.crs()
+            named_extent_polygons = {}
+            for feat in features_iterator:
+                fid, polygon_name = feat.id(), feat[polygon_name_field]
+                polygon_wkt = reproject_geometry(feat.geometry(), polygon_layer_crs, target_crs).asWkt()
+                named_extent_polygons[fid, polygon_name] = polygon_wkt
             crop_to_polygon = self.clip_to_polygon_ckb.isChecked()
+        # Spawn raster downloading task
         raster_downloader = RasterDownloader(
             self.plugin.downloader,
             raster_instance,

@@ -11,6 +11,7 @@ from qgis._core import QgsFeature
 from qgis.core import (
     QgsApplication,
     QgsAuthMethodConfig,
+    QgsCoordinateTransform,
     QgsField,
     QgsGeometry,
     QgsLayerTreeGroup,
@@ -344,6 +345,18 @@ def build_vrt(output_filepath, raster_filepaths, **vrt_options):
     options = gdal.BuildVRTOptions(**vrt_options)
     vrt_ds = gdal.BuildVRT(output_filepath, raster_filepaths, options=options)
     vrt_ds = None
+
+
+def reproject_geometry(geometry, src_crs, dst_crs, transformation=None):
+    """Reproject geometry from source CRS to destination CRS."""
+    if src_crs == dst_crs:
+        return geometry
+    if transformation is None:
+        project = QgsProject.instance()
+        transform_context = project.transformContext()
+        transformation = QgsCoordinateTransform(src_crs, dst_crs, transform_context)
+    geometry.transform(transformation)
+    return geometry
 
 
 def wkt_polygon_layer(polygon_wkt, polygon_layer_name="clip_layer", epsg="EPSG:4326"):
