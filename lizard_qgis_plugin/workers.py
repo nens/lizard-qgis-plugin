@@ -15,7 +15,6 @@ from lizard_qgis_plugin.utils import (
     build_vrt,
     clip_raster,
     create_raster_tasks,
-    download_file,
     layer_to_gpkg,
     split_raster_extent,
     split_scenario_extent,
@@ -273,7 +272,7 @@ class RasterDownloader(QRunnable):
                 self.report_progress(progress_msg, increase_current_step=False)
                 raster_filepath = bypass_max_path_limit(os.path.join(self.raster_download_dir, raster_filename))
                 raster_url = self.downloader.get_task_download_url(task_id)
-                download_file(raster_url, raster_filepath)
+                self.downloader.download_file(raster_url, raster_filepath)
                 self.downloaded_files[raster_filename] = raster_filepath
                 polygon_raster_filepaths.append(raster_filepath)
             self.report_progress(progress_msg, increase_current_step=True)
