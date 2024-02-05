@@ -1,0 +1,1283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>949</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Lizard</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="2" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pb_close">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <family>Segoe UI</family>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Close</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="0" column="0">
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="simulation_results_tab">
+      <attribute name="title">
+       <string>Simulation results</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_5">
+       <item row="0" column="0">
+        <widget class="QWidget" name="scenario_download_widget" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>500</width>
+           <height>300</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Segoe UI</family>
+          </font>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_8">
+          <item row="7" column="0" colspan="2">
+           <widget class="QGroupBox" name="grp_raster_settings">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="font">
+             <font>
+              <family>Segoe UI</family>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="title">
+             <string>Rasters download settings</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_3">
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                 <italic>false</italic>
+                </font>
+               </property>
+               <property name="text">
+                <string>NO DATA value:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QDoubleSpinBox" name="no_data_sbox">
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                </font>
+               </property>
+               <property name="frame">
+                <bool>true</bool>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="minimum">
+                <double>-1000000.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>1000000.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>-9999.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="4">
+              <widget class="QgsProjectionSelectionWidget" name="crs_widget">
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                </font>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="3">
+              <widget class="QLabel" name="label_4">
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                 <italic>false</italic>
+                </font>
+               </property>
+               <property name="text">
+                <string>CRS:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="2">
+              <spacer name="horizontalSpacer_3">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="10" column="0" colspan="2">
+           <layout class="QHBoxLayout" name="horizontalLayout_4">
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <spacer name="horizontalSpacer_9">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pb_download">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>100</width>
+                <height>30</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>12</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Download selected items</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="6" column="0" colspan="2">
+           <widget class="QTreeView" name="scenario_results_tv">
+            <property name="font">
+             <font>
+              <family>Segoe UI</family>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::Box</enum>
+            </property>
+            <property name="editTriggers">
+             <set>QAbstractItemView::NoEditTriggers</set>
+            </property>
+            <attribute name="headerDefaultSectionSize">
+             <number>150</number>
+            </attribute>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QLineEdit" name="scenario_search_le">
+            <property name="font">
+             <font>
+              <family>Segoe UI</family>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="frame">
+             <bool>true</bool>
+            </property>
+            <property name="placeholderText">
+             <string>🔍 Search for scenario by name</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <spacer name="horizontalSpacer_8">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pb_show_files">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>100</width>
+                <height>30</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>12</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Show downloadable files</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pb_add_wms">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>100</width>
+                <height>30</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>12</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Add as WMS</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <layout class="QHBoxLayout" name="horizontalLayout">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <spacer name="horizontalSpacer_13">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>400</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pb_prev_page">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="layoutDirection">
+               <enum>Qt::LeftToRight</enum>
+              </property>
+              <property name="text">
+               <string>&lt;</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="page_sbox">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>60</width>
+                <height>20</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::StrongFocus</enum>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">QSpinBox {background-color: white;}</string>
+              </property>
+              <property name="frame">
+               <bool>true</bool>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="buttonSymbols">
+               <enum>QAbstractSpinBox::NoButtons</enum>
+              </property>
+              <property name="suffix">
+               <string> / 1</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pb_next_page">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>&gt;</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QTreeView" name="scenario_tv">
+            <property name="font">
+             <font>
+              <family>Segoe UI</family>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::Box</enum>
+            </property>
+            <property name="editTriggers">
+             <set>QAbstractItemView::NoEditTriggers</set>
+            </property>
+            <property name="sortingEnabled">
+             <bool>true</bool>
+            </property>
+            <attribute name="headerShowSortIndicator" stdset="0">
+             <bool>true</bool>
+            </attribute>
+           </widget>
+          </item>
+          <item row="4" column="0" colspan="2">
+           <layout class="QGridLayout" name="gridLayout_4">
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item row="1" column="0">
+             <widget class="QCheckBox" name="toggle_selection_ckb">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="layoutDirection">
+               <enum>Qt::LeftToRight</enum>
+              </property>
+              <property name="text">
+               <string>Select/deselect all</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_2">
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>12</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Scenario items</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="rasters_tab">
+      <attribute name="title">
+       <string>Rasters</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_11">
+       <item row="0" column="0">
+        <widget class="QWidget" name="scenario_download_widget_2" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>500</width>
+           <height>300</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Segoe UI</family>
+          </font>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_9">
+          <item row="5" column="0" colspan="2">
+           <widget class="QGroupBox" name="grp_single_raster_settings">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="font">
+             <font>
+              <family>Segoe UI</family>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+            <property name="title">
+             <string>Rasters download settings</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_6">
+             <item row="2" column="0">
+              <widget class="QRadioButton" name="use_canvas_extent_rb">
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                </font>
+               </property>
+               <property name="text">
+                <string>Use current map canvas as extent</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1" colspan="3">
+              <widget class="QLineEdit" name="filename_le_raster">
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                </font>
+               </property>
+               <property name="toolTip">
+                <string>Small rasters will be downloaded as a single GeoTIFF. Large rasters will be downloaded as tiles of GeoTIFFs and a virtual raster file (.vrt) to use them as a single raster.</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1" colspan="3">
+              <widget class="QgsFileWidget" name="output_dir_raster">
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                </font>
+               </property>
+               <property name="storageMode">
+                <enum>QgsFileWidget::GetDirectory</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0" colspan="4">
+              <widget class="QWidget" name="grp_polygon_settings" native="true">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                </font>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_7">
+                <property name="leftMargin">
+                 <number>25</number>
+                </property>
+                <property name="topMargin">
+                 <number>3</number>
+                </property>
+                <item row="1" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_8">
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <spacer name="horizontalSpacer_5">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="selected_features_ckb">
+                    <property name="font">
+                     <font>
+                      <family>Segoe UI</family>
+                      <pointsize>9</pointsize>
+                     </font>
+                    </property>
+                    <property name="text">
+                     <string>Selected features only</string>
+                    </property>
+                    <property name="checked">
+                     <bool>false</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="clip_to_polygon_ckb">
+                    <property name="font">
+                     <font>
+                      <family>Segoe UI</family>
+                      <pointsize>9</pointsize>
+                     </font>
+                    </property>
+                    <property name="text">
+                     <string>Clip to polygon(s)</string>
+                    </property>
+                    <property name="checked">
+                     <bool>false</bool>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="label_7">
+                  <property name="text">
+                   <string>Name field</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_8">
+                  <property name="text">
+                   <string>Polygon layer:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QgsMapLayerComboBox" name="clip_polygon_cbo"/>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QgsFieldComboBox" name="clip_name_field_cbo"/>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_9">
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                </font>
+               </property>
+               <property name="text">
+                <string>File name: </string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QRadioButton" name="use_polygon_extent_rb">
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                </font>
+               </property>
+               <property name="text">
+                <string>Use polygons as extent</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label">
+               <property name="font">
+                <font>
+                 <family>Segoe UI</family>
+                 <pointsize>10</pointsize>
+                </font>
+               </property>
+               <property name="text">
+                <string>Save output(s) to:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0" colspan="4">
+              <layout class="QHBoxLayout" name="horizontalLayout_9">
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="label_5">
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>10</pointsize>
+                   <italic>false</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>NO DATA value:</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QDoubleSpinBox" name="no_data_sbox_raster">
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>10</pointsize>
+                  </font>
+                 </property>
+                 <property name="frame">
+                  <bool>true</bool>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 </property>
+                 <property name="minimum">
+                  <double>-1000000.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>1000000.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>-9999.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_6">
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>10</pointsize>
+                   <italic>false</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Pixel size: </string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QDoubleSpinBox" name="pixel_size_sbox_raster">
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>10</pointsize>
+                  </font>
+                 </property>
+                 <property name="maximum">
+                  <double>1000000.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="horizontalSpacer_4">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_10">
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>10</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>CRS:</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsProjectionSelectionWidget" name="crs_widget_raster">
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>10</pointsize>
+                  </font>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <layout class="QHBoxLayout" name="horizontalLayout_7">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <spacer name="horizontalSpacer_14">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>400</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pb_prev_page_raster">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="layoutDirection">
+               <enum>Qt::LeftToRight</enum>
+              </property>
+              <property name="text">
+               <string>&lt;</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="page_sbox_raster">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>60</width>
+                <height>20</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::StrongFocus</enum>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">QSpinBox {background-color: white;}</string>
+              </property>
+              <property name="frame">
+               <bool>true</bool>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="buttonSymbols">
+               <enum>QAbstractSpinBox::NoButtons</enum>
+              </property>
+              <property name="suffix">
+               <string> / 1</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pb_next_page_raster">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>&gt;</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QTreeView" name="raster_tv">
+            <property name="font">
+             <font>
+              <family>Segoe UI</family>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::Box</enum>
+            </property>
+            <property name="editTriggers">
+             <set>QAbstractItemView::NoEditTriggers</set>
+            </property>
+            <property name="sortingEnabled">
+             <bool>true</bool>
+            </property>
+            <attribute name="headerShowSortIndicator" stdset="0">
+             <bool>true</bool>
+            </attribute>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <layout class="QHBoxLayout" name="horizontalLayout_6">
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <spacer name="horizontalSpacer_11">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pb_add_wms_raster">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>100</width>
+                <height>30</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>12</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Add as WMS</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QLineEdit" name="raster_search_le">
+            <property name="font">
+             <font>
+              <family>Segoe UI</family>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="frame">
+             <bool>true</bool>
+            </property>
+            <property name="placeholderText">
+             <string>🔍 Search for raster by name</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0" colspan="2">
+           <layout class="QHBoxLayout" name="horizontalLayout_5">
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <spacer name="horizontalSpacer_10">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pb_download_raster">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>100</width>
+                <height>30</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>12</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Download selected raster</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QgsCollapsibleGroupBox" name="grp_feedback">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <family>Segoe UI</family>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="title">
+      <string>Feedback</string>
+     </property>
+     <property name="collapsed">
+      <bool>false</bool>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0" colspan="2">
+       <widget class="QListView" name="feedback_lv">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>100</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <family>Segoe UI</family>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="editTriggers">
+         <set>QAbstractItemView::NoEditTriggers</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QPushButton" name="pb_clear_feedback">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>100</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <family>Segoe UI</family>
+          <pointsize>12</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Clear feedback</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>qgscollapsiblegroupbox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsFieldComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qgsfieldcombobox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsFileWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsfilewidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsMapLayerComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qgsmaplayercombobox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsProjectionSelectionWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsprojectionselectionwidget.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
