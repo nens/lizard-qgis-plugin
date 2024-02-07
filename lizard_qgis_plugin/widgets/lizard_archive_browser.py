@@ -17,7 +17,7 @@ from qgis.core import (
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import QSettings, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
-from qgis.PyQt.QtWidgets import QCheckBox, QFileDialog
+from qgis.PyQt.QtWidgets import QCheckBox, QFileDialog, QDialog
 from qgis.utils import plugins
 from threedi_mi_utils import LocalRevision, LocalSchematisation, list_local_schematisations
 
@@ -36,10 +36,61 @@ from lizard_qgis_plugin.utils import (
 from lizard_qgis_plugin.workers import RasterDownloader, ScenarioItemsDownloader
 
 base_dir = os.path.dirname(__file__)
-uicls, basecls = uic.loadUiType(os.path.join(base_dir, "ui", "lizard.ui"))
+lizard_uicls, lizard_basecls = uic.loadUiType(os.path.join(base_dir, "ui", "lizard.ui"))
+download_settings_uicls, download_settings_basecls = uic.loadUiType(
+    os.path.join(base_dir, "ui", "raster_download_settings.ui")
+)
 
 
-class LizardBrowser(uicls, basecls):
+class RasterDownloadSettings(download_settings_uicls, download_settings_basecls):
+    def __init__(self, lizard_browser, parent=None):
+        super().__init__(parent)
+        self.setupUi(self)
+        self.lizard_browser = lizard_browser
+        self.clip_polygon_cbo.setFilters(QgsMapLayerProxyModel.PolygonLayer)
+        self.clip_name_field_cbo.setFilters(QgsFieldProxyModel.String)
+        self.use_polygon_extent_rb.toggled.connect(self.on_extent_changed)
+        self.clip_polygon_cbo.layerChanged.connect(self.on_polygon_changed)
+        self.clip_name_field_cbo.setLayer(self.clip_polygon_cbo.currentLayer())
+        self.accept_pb.clicked.connect(self.accept)
+        self.cancel_pb.clicked.connect(self.reject)
+        working_dir = QSettings().value("threedi/working_dir", "", type=str)
+        if working_dir:
+            self.output_dir_raster.setFilePath(working_dir)
+        self.populate_selected_raster_settings()
+
+    def on_extent_changed(self):
+        """Enable/disable polygon settings group."""
+        if self.use_polygon_extent_rb.isChecked():
+            self.grp_polygon_settings.setEnabled(True)
+        else:
+            self.grp_polygon_settings.setDisabled(True)
+
+    def on_polygon_changed(self, layer):
+        """Refresh field list on clip polygon change."""
+        self.clip_name_field_cbo.setLayer(layer)
+
+    def populate_selected_raster_settings(self):
+        """Populate download settings if any raster is selected."""
+        selection_model = self.lizard_browser.raster_tv.selectionModel()
+        self.filename_le_raster.clear()
+        if selection_model.hasSelection():
+            index = self.lizard_browser.raster_tv.currentIndex()
+            if index.isValid():
+                current_row = index.row()
+                raster_uuid_item = self.lizard_browser.raster_model.item(
+                    current_row, LizardBrowser.RASTER_UUID_COLUMN_IDX
+                )
+                raster_uuid = raster_uuid_item.text()
+                raster_instance = self.lizard_browser.current_raster_instances[raster_uuid]
+                self.filename_le_raster.setText(raster_instance["name"])
+                raster_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(raster_instance["projection"])
+                self.crs_widget_raster.setCrs(raster_crs)
+                raster_resolution = raster_instance["pixelsize_x"]
+                self.pixel_size_sbox_raster.setValue(raster_resolution if raster_resolution else 0.0)
+
+
+class LizardBrowser(lizard_uicls, lizard_basecls):
     TABLE_LIMIT = 25
     SCENARIO_NAME_COLUMN_IDX = 0
     SCENARIO_UUID_COLUMN_IDX = 5
@@ -57,8 +108,6 @@ class LizardBrowser(uicls, basecls):
         self.scenario_results_tv.setModel(self.scenario_results_model)
         self.raster_model = QStandardItemModel()
         self.raster_tv.setModel(self.raster_model)
-        self.clip_polygon_cbo.setFilters(QgsMapLayerProxyModel.PolygonLayer)
-        self.clip_name_field_cbo.setFilters(QgsFieldProxyModel.String)
         self.feedback_model = QStandardItemModel()
         self.feedback_lv.setModel(self.feedback_model)
         self.current_scenario_instances = {}
@@ -80,16 +129,10 @@ class LizardBrowser(uicls, basecls):
         self.pb_download_raster.clicked.connect(self.download_raster_file)
         self.raster_search_le.returnPressed.connect(self.search_for_rasters)
         self.raster_tv.selectionModel().selectionChanged.connect(self.toggle_raster_selected)
-        self.use_polygon_extent_rb.toggled.connect(self.on_extent_changed)
-        self.clip_polygon_cbo.layerChanged.connect(self.on_polygon_changed)
         self.pb_clear_feedback.clicked.connect(self.feedback_model.clear)
         self.pb_close.clicked.connect(self.close)
         self.fetch_scenarios()
         self.fetch_rasters()
-        self.clip_name_field_cbo.setLayer(self.clip_polygon_cbo.currentLayer())
-        working_dir = QSettings().value("threedi/working_dir", "", type=str)
-        if working_dir:
-            self.output_dir_raster.setFilePath(working_dir)
         self.resize(QSize(1600, 850))
 
     def log_feedback(self, feedback_message, level=Qgis.Info):
@@ -409,41 +452,24 @@ class LizardBrowser(uicls, basecls):
         """Move to the next matching rasters page."""
         self.page_sbox_raster.setValue(self.page_sbox_raster.value() + 1)
 
-    def on_extent_changed(self):
-        """Enable/disable polygon settings group."""
-        if self.use_polygon_extent_rb.isChecked():
-            self.grp_polygon_settings.setEnabled(True)
-        else:
-            self.grp_polygon_settings.setDisabled(True)
-
-    def on_polygon_changed(self, layer):
-        """Refresh field list on clip polygon change."""
-        self.clip_name_field_cbo.setLayer(layer)
-
     def toggle_raster_selected(self):
         """Toggle action widgets if any raster is selected."""
         selection_model = self.raster_tv.selectionModel()
-        self.filename_le_raster.clear()
         if selection_model.hasSelection():
             self.pb_add_wms_raster.setEnabled(True)
-            self.pb_download_raster.setEnabled(True)
-            self.grp_single_raster_settings.setEnabled(True)
             index = self.raster_tv.currentIndex()
             if index.isValid():
                 current_row = index.row()
-                raster_uuid_item = self.raster_model.item(current_row, self.RASTER_UUID_COLUMN_IDX)
+                raster_uuid_item = self.raster_model.item(current_row, LizardBrowser.RASTER_UUID_COLUMN_IDX)
                 raster_uuid = raster_uuid_item.text()
                 raster_instance = self.current_raster_instances[raster_uuid]
-                self.filename_le_raster.setText(raster_instance["name"])
-                raster_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(raster_instance["projection"])
-                self.crs_widget_raster.setCrs(raster_crs)
-                raster_resolution = raster_instance["pixelsize_x"]
-                self.pixel_size_sbox_raster.setValue(raster_resolution if raster_resolution else 0.0)
+                if not raster_instance["temporal"]:
+                    self.pb_download_raster.setEnabled(True)
+                else:
+                    self.pb_download_raster.setDisabled(True)
         else:
             self.pb_add_wms_raster.setDisabled(True)
             self.pb_download_raster.setDisabled(True)
-            self.grp_single_raster_settings.setDisabled(True)
-            self.pixel_size_sbox_raster.setValue(0.0)
 
     def fetch_rasters(self):
         """Fetch and list matching rasters."""
@@ -524,23 +550,29 @@ class LizardBrowser(uicls, basecls):
         index = self.raster_tv.currentIndex()
         if not index.isValid():
             return
+        download_settings_dlg = RasterDownloadSettings(self)
+        res = download_settings_dlg.exec_()
+        if res != QDialog.Accepted:
+            self.plugin.communication.show_warn("Raster downloading canceled.")
+            self.raise_()
+            return
         current_row = index.row()
         raster_uuid_item = self.raster_model.item(current_row, self.RASTER_UUID_COLUMN_IDX)
         raster_uuid = raster_uuid_item.text()
         raster_instance = self.current_raster_instances[raster_uuid]
-        download_dir = self.output_dir_raster.filePath()
-        raster_name = self.filename_le_raster.text()
-        no_data = self.no_data_sbox_raster.value()
-        resolution = self.pixel_size_sbox_raster.value()
+        download_dir = download_settings_dlg.output_dir_raster.filePath()
+        raster_name = download_settings_dlg.filename_le_raster.text()
+        no_data = download_settings_dlg.no_data_sbox_raster.value()
+        resolution = download_settings_dlg.pixel_size_sbox_raster.value()
         resolution = resolution if resolution else None
-        projection = self.crs_widget_raster.crs().authid()
+        projection = download_settings_dlg.crs_widget_raster.crs().authid()
         target_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(projection)
         if not download_dir:
-            self.plugin.communication.show_warn("Output directory not specified - raster downloading canceled..")
+            self.plugin.communication.show_warn("Output directory not specified - raster downloading canceled.")
             self.raise_()
             return
         if not raster_name:
-            self.plugin.communication.show_warn("Output filename not specified - raster downloading canceled..")
+            self.plugin.communication.show_warn("Output filename not specified - raster downloading canceled.")
             self.raise_()
             return
         try:
@@ -552,7 +584,7 @@ class LizardBrowser(uicls, basecls):
             self.raise_()
             return
         # If map canvas extent
-        if self.use_canvas_extent_rb.isChecked():
+        if download_settings_dlg.use_canvas_extent_rb.isChecked():
             project_crs = QgsProject.instance().crs()
             polygon_id, polygon_name = 0, ""
             polygon_wkt = self.plugin.iface.mapCanvas().extent().asWktPolygon()
@@ -562,31 +594,38 @@ class LizardBrowser(uicls, basecls):
             crop_to_polygon = False
         # If polygon extent
         else:
-            polygon_layer = self.clip_polygon_cbo.currentLayer()
+            polygon_layer = download_settings_dlg.clip_polygon_cbo.currentLayer()
             if not polygon_layer:
                 self.plugin.communication.show_warn(
-                    "Clip polygon layer is not specified - raster downloading canceled.."
+                    "Clip polygon layer is not specified - raster downloading canceled."
                 )
                 self.raise_()
                 return
-            polygon_name_field = self.clip_name_field_cbo.currentField()
-            if not polygon_name_field:
-                self.plugin.communication.show_warn(
-                    "Clip polygon layer name field is not specified - raster downloading canceled.."
-                )
-                self.raise_()
-                return
-            if self.selected_features_ckb.isChecked():
+            polygon_name_field = download_settings_dlg.clip_name_field_cbo.currentField()
+            if download_settings_dlg.selected_features_ckb.isChecked():
                 features_iterator = polygon_layer.selectedFeatures()
+                number_of_features = polygon_layer.selectedFeatureCount()
             else:
                 features_iterator = polygon_layer.getFeatures()
+                number_of_features = polygon_layer.featureCount()
+            if number_of_features == 0:
+                self.plugin.communication.show_warn("There are no clip features defined - raster downloading canceled.")
+                self.raise_()
+                return
+            if number_of_features > 1 and not polygon_name_field:
+                self.plugin.communication.show_warn(
+                    "Clip polygon layer name field is not specified - raster downloading canceled."
+                )
+                self.raise_()
+                return
             polygon_layer_crs = polygon_layer.crs()
             named_extent_polygons = {}
             for feat in features_iterator:
-                fid, polygon_name = feat.id(), feat[polygon_name_field]
+                fid = feat.id()
+                polygon_name = feat.get(polygon_name_field, raster_name)
                 polygon_wkt = reproject_geometry(feat.geometry(), polygon_layer_crs, target_crs).asWkt()
                 named_extent_polygons[fid, polygon_name] = polygon_wkt
-            crop_to_polygon = self.clip_to_polygon_ckb.isChecked()
+            crop_to_polygon = download_settings_dlg.clip_to_polygon_ckb.isChecked()
         # Spawn raster downloading task
         raster_downloader = RasterDownloader(
             self.plugin.downloader,
