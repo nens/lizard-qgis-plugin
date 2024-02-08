@@ -622,7 +622,10 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
             named_extent_polygons = {}
             for feat in features_iterator:
                 fid = feat.id()
-                polygon_name = feat.get(polygon_name_field, raster_name)
+                try:
+                    polygon_name = feat[polygon_name_field]
+                except KeyError:
+                    polygon_name = raster_name
                 polygon_wkt = reproject_geometry(feat.geometry(), polygon_layer_crs, target_crs).asWkt()
                 named_extent_polygons[fid, polygon_name] = polygon_wkt
             crop_to_polygon = download_settings_dlg.clip_to_polygon_ckb.isChecked()
