@@ -15,9 +15,9 @@ from qgis.core import (
     QgsRectangle,
 )
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import QSettings, QSize, Qt
+from qgis.PyQt.QtCore import QSettings, QSize, Qt, QTimer
 from qgis.PyQt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
-from qgis.PyQt.QtWidgets import QCheckBox, QFileDialog, QDialog
+from qgis.PyQt.QtWidgets import QCheckBox, QDialog, QFileDialog
 from qgis.utils import plugins
 from threedi_mi_utils import LocalRevision, LocalSchematisation, list_local_schematisations
 
@@ -49,15 +49,21 @@ class RasterDownloadSettings(download_settings_uicls, download_settings_basecls)
         self.lizard_browser = lizard_browser
         self.clip_polygon_cbo.setFilters(QgsMapLayerProxyModel.PolygonLayer)
         self.clip_name_field_cbo.setFilters(QgsFieldProxyModel.String)
+        self.output_dir_raster.fileChanged.connect(self.on_output_dir_changed)
         self.use_polygon_extent_rb.toggled.connect(self.on_extent_changed)
         self.clip_polygon_cbo.layerChanged.connect(self.on_polygon_changed)
         self.clip_name_field_cbo.setLayer(self.clip_polygon_cbo.currentLayer())
         self.accept_pb.clicked.connect(self.accept)
         self.cancel_pb.clicked.connect(self.reject)
-        working_dir = QSettings().value("threedi/working_dir", "", type=str)
-        if working_dir:
-            self.output_dir_raster.setFilePath(working_dir)
+        lizard_output_dir = QSettings().value("threedi/last_lizard_output_dir", "", type=str)
+        if lizard_output_dir:
+            self.output_dir_raster.setFilePath(lizard_output_dir)
         self.populate_selected_raster_settings()
+
+    def on_output_dir_changed(self):
+        """Save the last output dir path."""
+        output_dir_filepath = self.output_dir_raster.filePath()
+        QSettings().setValue("threedi/last_lizard_output_dir", output_dir_filepath)
 
     def on_extent_changed(self):
         """Enable/disable polygon settings group."""
@@ -553,7 +559,6 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         download_settings_dlg = RasterDownloadSettings(self)
         res = download_settings_dlg.exec_()
         if res != QDialog.Accepted:
-            self.plugin.communication.show_warn("Raster downloading canceled.")
             self.raise_()
             return
         current_row = index.row()
@@ -568,12 +573,14 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         projection = download_settings_dlg.crs_widget_raster.crs().authid()
         target_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(projection)
         if not download_dir:
-            self.plugin.communication.show_warn("Output directory not specified - raster downloading canceled.")
+            self.plugin.communication.show_warn("Output directory not specified - please specify it and try again.")
             self.raise_()
+            QTimer.singleShot(1, self.download_raster_file)
             return
         if not raster_name:
-            self.plugin.communication.show_warn("Output filename not specified - raster downloading canceled.")
+            self.plugin.communication.show_warn("Output filename not specified - please specify it and try again.")
             self.raise_()
+            QTimer.singleShot(1, self.download_raster_file)
             return
         try:
             try_to_write(download_dir)
@@ -582,6 +589,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
                 "Can't write to the selected location. Please select a folder to which you have write permission."
             )
             self.raise_()
+            QTimer.singleShot(1, self.download_raster_file)
             return
         # If map canvas extent
         if download_settings_dlg.use_canvas_extent_rb.isChecked():
@@ -597,9 +605,10 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
             polygon_layer = download_settings_dlg.clip_polygon_cbo.currentLayer()
             if not polygon_layer:
                 self.plugin.communication.show_warn(
-                    "Clip polygon layer is not specified - raster downloading canceled."
+                    "Clip polygon layer is not specified - please specify it and try again."
                 )
                 self.raise_()
+                QTimer.singleShot(1, self.download_raster_file)
                 return
             polygon_name_field = download_settings_dlg.clip_name_field_cbo.currentField()
             if download_settings_dlg.selected_features_ckb.isChecked():
@@ -614,9 +623,12 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
                 return
             if number_of_features > 1 and not polygon_name_field:
                 self.plugin.communication.show_warn(
-                    "Clip polygon layer name field is not specified - raster downloading canceled."
+                    "Cannot download rasters for multiple polygons if name field is not specified. "
+                    "Either select a single polygon and use the option 'Selected features only', "
+                    "or specify a name field and try again."
                 )
                 self.raise_()
+                QTimer.singleShot(1, self.download_raster_file)
                 return
             polygon_layer_crs = polygon_layer.crs()
             named_extent_polygons = {}
