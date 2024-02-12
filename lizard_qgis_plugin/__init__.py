@@ -14,12 +14,12 @@ from lizard_qgis_plugin.widgets.settings import SettingsDialog
 try:
     from threedi_scenario_downloader import downloader
 
-    from lizard_qgis_plugin.widgets.scenario_archive_browser import ScenarioArchiveBrowser
+    from lizard_qgis_plugin.widgets.lizard_archive_browser import LizardBrowser
 except ImportError:
     patch_wheel_imports()
     from threedi_scenario_downloader import downloader
 
-    from lizard_qgis_plugin.widgets.scenario_archive_browser import ScenarioArchiveBrowser
+    from lizard_qgis_plugin.widgets.lizard_archive_browser import LizardBrowser
 
 
 def classFactory(iface):
@@ -35,9 +35,9 @@ class ThreediLizardPlugin:
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
         self.downloader = downloader
-        self.scenario_downloader_pool = QThreadPool()
-        self.scenario_downloader_pool.setMaxThreadCount(self.MAX_DOWNLOAD_THREAD_COUNT)
-        self.scenario_browser = None
+        self.lizard_downloader_pool = QThreadPool()
+        self.lizard_downloader_pool.setMaxThreadCount(self.MAX_DOWNLOAD_THREAD_COUNT)
+        self.lizard_browser = None
         self.actions = []
         self.menu = self.PLUGIN_NAME
         self.toolbar = self.iface.addToolBar(self.PLUGIN_ENTRY_NAME)
@@ -111,8 +111,8 @@ class ThreediLizardPlugin:
         self.settings.ensure_api_key_present()
         if not self.settings.api_key:
             return
-        if self.scenario_browser is None:
-            self.scenario_browser = ScenarioArchiveBrowser(self)
-        self.scenario_browser.show()
-        self.scenario_browser.raise_()
-        self.scenario_browser.activateWindow()
+        if self.lizard_browser is None:
+            self.lizard_browser = LizardBrowser(self)
+        self.lizard_browser.show()
+        self.lizard_browser.raise_()
+        self.lizard_browser.activateWindow()
