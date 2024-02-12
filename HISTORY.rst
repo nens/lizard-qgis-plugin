@@ -1,6 +1,6 @@
 History
 =======
-0.3.0 (Unreleased)
+0.3.0 (2024-2-12)
 ------------------
 
 - Implemented non-scenario rasters download functionality (#8)
