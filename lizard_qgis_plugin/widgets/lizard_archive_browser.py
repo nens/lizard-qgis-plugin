@@ -140,7 +140,6 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         self.fetch_scenarios()
         self.fetch_rasters()
         self.resize(QSize(1600, 850))
-        self.scenario_search_le.setFocus()
 
     def log_feedback(self, feedback_message, level=Qgis.Info):
         """Log messages in the feedback list view."""

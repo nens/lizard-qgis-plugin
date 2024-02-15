@@ -162,7 +162,7 @@
     </widget>
    </item>
    <item row="0" column="0">
-    <widget class="QTabWidget" name="tabWidget">
+    <widget class="QTabWidget" name="lizard_tab">
      <property name="currentIndex">
       <number>0</number>
      </property>
@@ -894,7 +894,7 @@
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>tabWidget</tabstop>
+  <tabstop>lizard_tab</tabstop>
   <tabstop>scenario_search_le</tabstop>
   <tabstop>scenario_tv</tabstop>
   <tabstop>pb_prev_page</tabstop>

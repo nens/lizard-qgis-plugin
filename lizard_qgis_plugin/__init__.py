@@ -116,3 +116,7 @@ class ThreediLizardPlugin:
         self.lizard_browser.show()
         self.lizard_browser.raise_()
         self.lizard_browser.activateWindow()
+        if self.lizard_browser.lizard_tab.currentIndex() == 0:
+            self.lizard_browser.scenario_search_le.setFocus()
+        else:
+            self.lizard_browser.raster_search_le.setFocus()
