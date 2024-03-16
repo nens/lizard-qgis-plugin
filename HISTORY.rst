@@ -1,5 +1,10 @@
 History
 =======
+
+0.3.1 (2024-3-14)
+
+- Changed initial focus to the search bar.
+
 0.3.0 (2024-2-12)
 ------------------
 
