@@ -1,6 +1,10 @@
 History
 =======
 
+0.3.2 (2024-3-18)
+
+- Fix for the default focus on the search bar.
+
 0.3.1 (2024-3-14)
 
 - Changed initial focus to the search bar.
