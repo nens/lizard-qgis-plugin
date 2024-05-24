@@ -137,9 +137,44 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         self.raster_tv.selectionModel().selectionChanged.connect(self.toggle_raster_selected)
         self.pb_clear_feedback.clicked.connect(self.feedback_model.clear)
         self.pb_close.clicked.connect(self.close)
+        self.fetch_layers()
+        self.cb_select_location_layer.currentIndexChanged.connect(self.post_locations)
         self.fetch_scenarios()
         self.fetch_rasters()
         self.resize(QSize(1600, 850))
+
+                    
+    def fetch_layers(self):
+        """Fill the Select a layer box with all the current layers"""
+        #TODO zorgen dat de lijst met lagen wordt aangevuld als een nieuwe laag wordt toegevoegd?
+        self.currentLayers = QgsProject.instance().layerTreeRoot().children()
+        self.cb_select_location_layer.clear()
+        self.cb_select_location_layer.addItems([layer.name() for layer in self.currentLayers])
+        self.cb_select_location_layer.setCurrentIndex(-1)    
+        self.cb_code_column.setEnabled(False)
+        self.cb_name_column.setEnabled(False)
+        
+    def post_locations(self):
+        """Prepare the information to post locations to Lizard"""
+        layers = self.currentLayers
+        selectedLayerIndex = self.cb_select_location_layer.currentIndex()
+        
+        self.cb_name_column.clear()
+        self.cb_code_column.clear()
+        # self.log_feedback(str(selectedLayerIndex))
+        if not selectedLayerIndex == -1:
+            selectedLayer = layers[selectedLayerIndex].layer()
+            selectedLayerColumns = selectedLayer.fields().names()
+               
+            self.cb_code_column.addItems([columnname for columnname in selectedLayerColumns])
+            self.cb_name_column.addItems([columnname for columnname in selectedLayerColumns])
+            self.cb_code_column.setCurrentIndex(-1)
+            self.cb_name_column.setCurrentIndex(-1) 
+            self.cb_code_column.setEnabled(True)
+            self.cb_name_column.setEnabled(True)
+    
+    def closeEvent(self, event):
+        self.fetch_layers()
 
     def log_feedback(self, feedback_message, level=Qgis.Info):
         """Log messages in the feedback list view."""
