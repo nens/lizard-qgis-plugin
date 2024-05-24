@@ -14,7 +14,7 @@ email=servicedesk@nelen-schuurmans.nl
 
 about=Interact with Lizard from QGIS.
 
-    Browse for simulation results and add them as WMS layers. Navigate through temporal WMS layers using the QGIS Temporal Controller.
+    Browse for simulation results and add them as WMS layers. Navigate through temporal WMS layers using the QGIS Temporal Controller. Upload point layers as locations to Lizard.
 
     A Lizard subscription is required to use this plugin. See https://www.lizard.net.
 
