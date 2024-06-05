@@ -396,3 +396,9 @@ def clip_raster(raster_src, polygon_clip_gpkg, polygon_clip_layer="clip_layer", 
     gdal.Warp(raster_dst, raster_src, options=warp_options)
     os.remove(raster_src)
     os.rename(raster_dst, raster_src)
+
+
+def translate_illegal_chars(text, illegal_characters=r'\/:*?"<>|', replacement_character="-"):
+    """Remove illegal characters from the text."""
+    sanitized_text = "".join(char if char not in illegal_characters else replacement_character for char in text)
+    return sanitized_text

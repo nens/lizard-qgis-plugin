@@ -31,6 +31,7 @@ from lizard_qgis_plugin.utils import (
     get_capabilities_layer_uris,
     get_url_raster_instance,
     reproject_geometry,
+    translate_illegal_chars,
     try_to_write,
 )
 from lizard_qgis_plugin.workers import RasterDownloader, ScenarioItemsDownloader
@@ -384,6 +385,11 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         if not download_dir:
             self.plugin.communication.bar_info("Downloading results files canceled..")
             return
+        scenario_simulation_id = scenario_instance["simulation_identifier"]
+        scenario_name = scenario_instance["name"]
+        if scenario_simulation_id:
+            simulation_subdir = translate_illegal_chars(f"{scenario_name} ({scenario_simulation_id})")
+            download_dir = os.path.join(download_dir, simulation_subdir)
         rasters_to_download, raw_results_to_download = [], []
         for result in self.current_scenario_results.values():
             checkbox = result["checkbox"]
@@ -397,7 +403,6 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
             else:
                 raw_results_to_download.append(result_copy)
         scenario_instance = self.current_scenario_instances[scenario_uuid]
-        scenario_name = scenario_instance["name"]
         projection = self.crs_widget.crs().authid()
         no_data = self.no_data_sbox.value()
         scenario_items_downloader = ScenarioItemsDownloader(
