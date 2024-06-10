@@ -396,7 +396,6 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
                 rasters_to_download.append(result_copy)
             else:
                 raw_results_to_download.append(result_copy)
-        scenario_instance = self.current_scenario_instances[scenario_uuid]
         scenario_name = scenario_instance["name"]
         projection = self.crs_widget.crs().authid()
         no_data = self.no_data_sbox.value()

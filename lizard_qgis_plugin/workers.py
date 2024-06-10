@@ -18,6 +18,7 @@ from lizard_qgis_plugin.utils import (
     layer_to_gpkg,
     split_raster_extent,
     split_scenario_extent,
+    translate_illegal_chars,
     wkt_polygon_layer,
 )
 
@@ -49,9 +50,12 @@ class ScenarioItemsDownloader(QRunnable):
         self.scenario_instance = scenario_instance
         self.scenario_id = scenario_instance["uuid"]
         self.scenario_name = scenario_instance["name"]
+        self.scenario_simulation_id = int(scenario_instance["simulation_identifier"])
         self.raw_results_to_download = raw_results_to_download
         self.raster_results = raster_results
-        self.scenario_download_dir = os.path.join(download_dir, str(self.scenario_name))
+        self.scenario_download_dir = os.path.join(
+            download_dir, translate_illegal_chars(f"{self.scenario_name} ({self.scenario_simulation_id})")
+        )
         self.projection = projection
         self.no_data = no_data
         self.total_progress = 100
