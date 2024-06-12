@@ -5,6 +5,7 @@ History
 ------------------
 
 - Changed simulation results directory name (#530).
+- Fixed issues: #30
 
 0.3.2 (2024-3-18)
 ------------------
