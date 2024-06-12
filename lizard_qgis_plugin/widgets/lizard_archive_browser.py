@@ -316,7 +316,8 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
                 else:
                     result_filename = result_name.lower().replace(" ", "_") + ".tif"
             else:
-                result_filename = result_attachment_url.rsplit("/", 1)[-1]
+                # Extract just a filename from the attachment URL
+                result_filename = result_attachment_url.rsplit("/", 1)[-1].split("?", 1)[0]
             result_checkbox = QCheckBox(result_name)
             result_checkbox.setEnabled(result_enabled)
             results_checkbox_item = QStandardItem("")
