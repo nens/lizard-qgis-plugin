@@ -1,7 +1,12 @@
 History
 =======
 
-0.3.3 (Unreleased)
+0.3.4 (Unreleased)
+------------------
+
+- Nothing changed yet.
+
+0.3.3 (2024-6-21)
 ------------------
 
 - Changed simulation results directory name (#530).
