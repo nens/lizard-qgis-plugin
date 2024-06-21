@@ -24,6 +24,7 @@ from qgis.PyQt.QtCore import QSettings, QVariant
 
 LIZARD_SETTINGS_ENTRY = "lizard_qgis_plugin"
 LIZARD_AUTHCFG_ENTRY = f"{LIZARD_SETTINGS_ENTRY}/authcfg"
+RASTER_FALLBACK_RESOLUTION = 1.0
 
 
 class WMSServiceException(Exception):
@@ -242,17 +243,23 @@ def split_raster_extent(raster_instance, bbox, resolution=None, max_pixel_count=
     x2_src = raster_instance["upper_bound_x"]
     y2_src = raster_instance["upper_bound_y"]
     x1, y1, x2, y2 = bbox
-    if x1_src > x1:
+    if x1_src is not None and x1_src > x1:
         x1 = x1_src
-    if x2_src < x2:
+    if x2_src is not None and x2_src < x2:
         x2 = x2_src
-    if y1_src > y1:
+    if y1_src is not None and y1_src > y1:
         y1 = y1_src
-    if y2_src < y2:
+    if y2_src is not None and y2_src < y2:
         y2 = y2_src
     if resolution is None:
-        pixelsize_x = abs(raster_instance["pixelsize_x"])
-        pixelsize_y = abs(raster_instance["pixelsize_y"])
+        pixelsize_x_raw = raster_instance["pixelsize_x"]
+        pixelsize_y_raw = raster_instance["pixelsize_y"]
+        if pixelsize_x_raw is not None and pixelsize_y_raw is not None:
+            pixelsize_x = abs(pixelsize_x_raw)
+            pixelsize_y = abs(pixelsize_y_raw)
+        else:
+            pixelsize_x = RASTER_FALLBACK_RESOLUTION
+            pixelsize_y = RASTER_FALLBACK_RESOLUTION
     else:
         pixelsize_x = resolution
         pixelsize_y = resolution
