@@ -22,6 +22,7 @@ from qgis.utils import plugins
 from threedi_mi_utils import LocalRevision, LocalSchematisation, list_local_schematisations
 
 from lizard_qgis_plugin.utils import (
+    RASTER_FALLBACK_RESOLUTION,
     WMSServiceException,
     add_layer_to_group,
     count_rasters_with_name,
@@ -93,7 +94,9 @@ class RasterDownloadSettings(download_settings_uicls, download_settings_basecls)
                 raster_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(raster_instance["projection"])
                 self.crs_widget_raster.setCrs(raster_crs)
                 raster_resolution = raster_instance["pixelsize_x"]
-                self.pixel_size_sbox_raster.setValue(raster_resolution if raster_resolution else 0.0)
+                self.pixel_size_sbox_raster.setValue(
+                    raster_resolution if raster_resolution else RASTER_FALLBACK_RESOLUTION
+                )
 
 
 class LizardBrowser(lizard_uicls, lizard_basecls):
