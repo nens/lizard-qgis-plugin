@@ -7,11 +7,11 @@ from xml.etree import ElementTree
 
 import requests
 from osgeo import gdal
-from qgis._core import QgsFeature
 from qgis.core import (
     QgsApplication,
     QgsAuthMethodConfig,
     QgsCoordinateTransform,
+    QgsFeature,
     QgsField,
     QgsGeometry,
     QgsLayerTreeGroup,
