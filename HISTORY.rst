@@ -4,7 +4,7 @@ History
 0.3.4 (Unreleased)
 ------------------
 
-- Fixed issues: #578
+- Fixed issues: #32, #578
 
 0.3.3 (2024-6-21)
 ------------------

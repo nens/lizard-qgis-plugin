@@ -287,7 +287,7 @@ def split_raster_extent(raster_instance, bbox, resolution=None, max_pixel_count=
                 sub_y2 = sub_y1 + sub_height
                 sub_bbox = (sub_x1, sub_y1, sub_x2, sub_y2)
                 bboxes.append(sub_bbox)
-        spatial_bounds = (bboxes, sub_width, sub_height)
+        spatial_bounds = (bboxes, max_pixel_per_axis, max_pixel_per_axis)
     else:
         bboxes = [(x1, y1, x2, y2)]
         spatial_bounds = (bboxes, width, height)
