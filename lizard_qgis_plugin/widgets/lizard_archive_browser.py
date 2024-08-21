@@ -403,6 +403,9 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         scenario_name = scenario_instance["name"]
         projection = self.crs_widget.crs().authid()
         no_data = self.no_data_sbox.value()
+        if not rasters_to_download and not raw_results_to_download:
+            self.plugin.communication.show_warn("No items checked - please select items to download and try again.")
+            return
         scenario_items_downloader = ScenarioItemsDownloader(
             self.plugin.downloader,
             scenario_instance,
