@@ -403,6 +403,10 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         scenario_name = scenario_instance["name"]
         projection = self.crs_widget.crs().authid()
         no_data = self.no_data_sbox.value()
+        if not rasters_to_download and not raw_results_to_download:
+            warn_message = "No items checked - please select items to download and try again."
+            self.log_feedback(warn_message, Qgis.Warning)
+            return
         scenario_items_downloader = ScenarioItemsDownloader(
             self.plugin.downloader,
             scenario_instance,
