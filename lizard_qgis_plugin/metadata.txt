@@ -28,16 +28,7 @@ repository=https://github.com/nens/lizard-qgis-plugin
 # Recommended items:
 
 hasProcessingProvider=no
-# Uncomment the following line and add your changelog:
-changelog=<p>
- <p>0.3.5 Fixed issues: #24
- <p>0.3.4 Fixed issues: #32, #578
- <p>0.3.3 Changed simulation results directory name
- <p>0.3.2 Fix for the focus on the search bar
- <p>0.3.1 Minor UX fixes
- <p>0.3.0 Added non-scenario rasters download functionality
- <p>0.2.0 Added scenario items download functionality
- <p>0.1.0 Initial release
+changelog=https://docs.3di.live/a_releasenotes_3di_mi.html
 
 # Tags are comma separated with spaces allowed
 tags=3Di, archive, flood, flood modelling, lizard, river, scenario, simulation, water
