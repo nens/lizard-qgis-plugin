@@ -4,7 +4,7 @@ History
 0.3.6 (unreleased)
 -------------------
 
-- Fixed issue: #35
+- Fixes/enhancements: #35, #37
 
 
 0.3.5 (2024-9-12)

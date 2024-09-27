@@ -11,7 +11,6 @@ from qgis.core import (
     QgsFieldProxyModel,
     QgsGeometry,
     QgsMapLayerProxyModel,
-    QgsPointXY,
     QgsProject,
     QgsRasterLayer,
     QgsRectangle,
@@ -35,6 +34,7 @@ from lizard_qgis_plugin.utils import (
     get_url_raster_instance,
     reproject_geometry,
     try_to_write,
+    unify_spatial_boundaries,
 )
 from lizard_qgis_plugin.workers import RasterDownloader, ScenarioItemsDownloader
 
@@ -341,6 +341,8 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         self.pb_download.setEnabled(True)
         self.grp_raster_settings.setEnabled(True)
         self.toggle_selection_ckb.setEnabled(True)
+        raster_resolution = scenario_instance["pixelsize_x"]
+        self.pixel_size_sbox.setValue(raster_resolution if raster_resolution else RASTER_FALLBACK_RESOLUTION)
         scenario_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(scenario_instance["projection"])
         self.crs_widget.setCrs(scenario_crs)
 
@@ -385,7 +387,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         current_row = index.row()
         scenario_uuid_item = self.scenario_model.item(current_row, self.SCENARIO_UUID_COLUMN_IDX)
         scenario_uuid = scenario_uuid_item.text()
-        scenario_instance = self.current_scenario_instances[scenario_uuid]
+        scenario_instance = deepcopy(self.current_scenario_instances[scenario_uuid])
         download_dir = self.discover_download_directory(scenario_instance)
         if not download_dir:
             self.plugin.communication.bar_info("Downloading results files canceled..")
@@ -403,20 +405,27 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
             else:
                 raw_results_to_download.append(result_copy)
         scenario_name = scenario_instance["name"]
-        projection = self.crs_widget.crs().authid()
         no_data = self.no_data_sbox.value()
+        resolution = self.pixel_size_sbox.value()
+        target_crs = self.crs_widget.crs().authid()
         if not rasters_to_download and not raw_results_to_download:
             warn_message = "No items checked - please select items to download and try again."
             self.log_feedback(warn_message, Qgis.Warning)
             return
+        # Adjust scenario instance spatial boundaries to the selected CRS (if necessary)
+        scenario_instance_epsg = scenario_instance["projection"]
+        scenario_instance_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(scenario_instance_epsg)
+        if scenario_instance_crs != target_crs:
+            unify_spatial_boundaries(scenario_instance, scenario_instance_crs, target_crs)
         scenario_items_downloader = ScenarioItemsDownloader(
             self.plugin.downloader,
             scenario_instance,
             raw_results_to_download,
             rasters_to_download,
             download_dir,
-            projection,
             no_data,
+            resolution,
+            target_crs,
         )
         scenario_items_downloader.signals.download_progress.connect(self.on_download_progress)
         scenario_items_downloader.signals.download_finished.connect(self.on_download_finished)
@@ -650,23 +659,12 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
                 polygon_wkt = reproject_geometry(feat.geometry(), polygon_layer_crs, target_crs).asWkt()
                 named_extent_polygons[fid, polygon_name] = polygon_wkt
             crop_to_polygon = download_settings_dlg.clip_to_polygon_ckb.isChecked()
-        # Spawn raster downloading task
+        # Adjust raster instance spatial boundaries to the selected CRS (if necessary)
         raster_instance_epsg = raster_instance["projection"]
         raster_instance_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(raster_instance_epsg)
         if raster_instance_crs != target_crs:
-            raster_boundaries = [("origin_x", "origin_y"), ("upper_bound_x", "upper_bound_y")]
-            for x_coord_name, y_coord_name in raster_boundaries:
-                src_x_coord = raster_instance[x_coord_name]
-                src_y_coord = raster_instance[y_coord_name]
-                if src_x_coord is None or src_y_coord is None:
-                    continue
-                src_point_geom = QgsGeometry.fromPointXY(QgsPointXY(src_x_coord, src_y_coord))
-                dst_point_geom = reproject_geometry(src_point_geom, raster_instance_crs, target_crs)
-                dst_point = dst_point_geom.asPoint()
-                dst_x_coord = dst_point.x()
-                dst_y_coord = dst_point.y()
-                raster_instance[x_coord_name] = dst_x_coord
-                raster_instance[y_coord_name] = dst_y_coord
+            unify_spatial_boundaries(raster_instance, raster_instance_crs, target_crs)
+        # Spawn raster downloading task
         raster_downloader = RasterDownloader(
             self.plugin.downloader,
             raster_instance,
