@@ -43,7 +43,15 @@ class ScenarioItemsDownloader(QRunnable):
     TASK_CHECK_SLEEP_TIME = 5
 
     def __init__(
-        self, downloader, scenario_instance, raw_results_to_download, raster_results, download_dir, projection, no_data
+        self,
+        downloader,
+        scenario_instance,
+        raw_results_to_download,
+        raster_results,
+        download_dir,
+        no_data,
+        resolution,
+        projection,
     ):
         super().__init__()
         self.downloader = downloader
@@ -56,8 +64,9 @@ class ScenarioItemsDownloader(QRunnable):
         self.scenario_download_dir = os.path.join(
             download_dir, translate_illegal_chars(f"{self.scenario_name} ({self.scenario_simulation_id})")
         )
-        self.projection = projection
         self.no_data = no_data
+        self.resolution = resolution
+        self.projection = projection
         self.total_progress = 100
         self.current_step = 0
         self.number_of_steps = 0
@@ -90,7 +99,7 @@ class ScenarioItemsDownloader(QRunnable):
         # Create tasks
         progress_msg = f"Spawning raster tasks and preparing for download (scenario: '{self.scenario_name}')..."
         self.report_progress(progress_msg)
-        spatial_bounds = split_scenario_extent(self.scenario_instance)
+        spatial_bounds = split_scenario_extent(self.scenario_instance, self.resolution)
         for raster_result in self.raster_results:
             raster_url = raster_result["raster"]
             lizard_url = self.downloader.LIZARD_URL
