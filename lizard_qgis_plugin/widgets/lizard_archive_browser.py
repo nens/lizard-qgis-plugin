@@ -1,6 +1,7 @@
 # Lizard plugin for QGIS, licensed under GPLv2 or (at your option) any later version
 # Copyright (C) 2023 by Lutra Consulting for 3Di Water Management
 import os
+from copy import deepcopy
 from math import ceil
 from operator import itemgetter
 
@@ -10,6 +11,7 @@ from qgis.core import (
     QgsFieldProxyModel,
     QgsGeometry,
     QgsMapLayerProxyModel,
+    QgsPointXY,
     QgsProject,
     QgsRasterLayer,
     QgsRectangle,
@@ -571,7 +573,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         current_row = index.row()
         raster_uuid_item = self.raster_model.item(current_row, self.RASTER_UUID_COLUMN_IDX)
         raster_uuid = raster_uuid_item.text()
-        raster_instance = self.current_raster_instances[raster_uuid]
+        raster_instance = deepcopy(self.current_raster_instances[raster_uuid])
         download_dir = download_settings_dlg.output_dir_raster.filePath()
         raster_name = download_settings_dlg.filename_le_raster.text()
         no_data = download_settings_dlg.no_data_sbox_raster.value()
@@ -649,6 +651,22 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
                 named_extent_polygons[fid, polygon_name] = polygon_wkt
             crop_to_polygon = download_settings_dlg.clip_to_polygon_ckb.isChecked()
         # Spawn raster downloading task
+        raster_instance_epsg = raster_instance["projection"]
+        raster_instance_crs = QgsCoordinateReferenceSystem.fromOgcWmsCrs(raster_instance_epsg)
+        if raster_instance_crs != target_crs:
+            raster_boundaries = [("origin_x", "origin_y"), ("upper_bound_x", "upper_bound_y")]
+            for x_coord_name, y_coord_name in raster_boundaries:
+                src_x_coord = raster_instance[x_coord_name]
+                src_y_coord = raster_instance[y_coord_name]
+                if src_x_coord is None or src_y_coord is None:
+                    continue
+                src_point_geom = QgsGeometry.fromPointXY(QgsPointXY(src_x_coord, src_y_coord))
+                dst_point_geom = reproject_geometry(src_point_geom, raster_instance_crs, target_crs)
+                dst_point = dst_point_geom.asPoint()
+                dst_x_coord = dst_point.x()
+                dst_y_coord = dst_point.y()
+                raster_instance[x_coord_name] = dst_x_coord
+                raster_instance[y_coord_name] = dst_y_coord
         raster_downloader = RasterDownloader(
             self.plugin.downloader,
             raster_instance,
