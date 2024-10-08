@@ -14,11 +14,15 @@ from threedi_mi_utils import bypass_max_path_limit
 from lizard_qgis_plugin.utils import (
     build_vrt,
     clip_raster,
+    create_buildings_flood_risk_task,
+    create_buildings_result,
     create_raster_tasks,
+    create_vulnerable_buildings_result,
     layer_to_gpkg,
     split_raster_extent,
     split_scenario_extent,
     translate_illegal_chars,
+    upload_local_file,
     wkt_polygon_layer,
 )
 
@@ -29,12 +33,26 @@ class LizardDownloadError(Exception):
     pass
 
 
+class LizardFloodRiskAnalysisError(Exception):
+    """Lizard flood risk analyzer exception class."""
+
+    pass
+
+
 class LizardDownloaderSignals(QObject):
     """Definition of the items download worker signals."""
 
     download_progress = pyqtSignal(dict, str, int, int)
     download_finished = pyqtSignal(dict, dict, str)
     download_failed = pyqtSignal(dict, str)
+
+
+class LizardFloodRiskAnalysisSignals(QObject):
+    """Definition of the buildings flood risk analyzer worker signals."""
+
+    analysis_progress = pyqtSignal(dict, str, int, int)
+    analysis_finished = pyqtSignal(dict, str)
+    analysis_failed = pyqtSignal(dict, str)
 
 
 class ScenarioItemsDownloader(QRunnable):
@@ -343,3 +361,97 @@ class RasterDownloader(QRunnable):
     def report_finished(self, message):
         """Report worker finished message."""
         self.signals.download_finished.emit(self.raster_instance, self.downloaded_files, message)
+
+
+class BuildingsFloodRiskAnalyzer(QRunnable):
+    """Worker object responsible for running building flood risk analysis."""
+
+    TASK_CHECK_SLEEP_TIME = 5
+
+    def __init__(
+        self,
+        downloader,
+        scenario_instance,
+        buildings_gpkg,
+        calculation_method="dgbc",
+        output_format="gpkg",
+    ):
+        super().__init__()
+        self.downloader = downloader
+        self.scenario_instance = scenario_instance
+        self.buildings_gpkg = buildings_gpkg
+        self.calculation_method = calculation_method
+        self.output_format = output_format
+        self.total_progress = 100
+        self.current_step = 0
+        self.number_of_steps = 4
+        self.percentage_per_step = self.total_progress / self.number_of_steps
+        self.signals = LizardFloodRiskAnalysisSignals()
+
+    def analyze_buildings_flood_risk(self):
+        success_statuses = {"SUCCESS"}
+        in_progress_statuses = {"PENDING", "UNKNOWN", "STARTED", "RETRY"}
+        lizard_url = self.downloader.LIZARD_URL
+        api_key = self.downloader.get_api_key()
+        # Create a "buildings" result object for the scenario
+        progress_msg = f"Create a \"buildings\" result object for the scenario '{self.scenario_name}'..."
+        self.report_progress(progress_msg)
+        buildings_result = create_buildings_result(lizard_url, api_key, self.scenario_instance)
+        progress_msg = f"Upload buildings for the scenario '{self.scenario_name}'..."
+        self.report_progress(progress_msg)
+        buildings_result_upload_url = buildings_result["upload_url"]
+        upload_local_file(self.buildings_gpkg, buildings_result_upload_url)
+        progress_msg = f"Create a \"vulnerable buildings\" result object for the scenario '{self.scenario_name}'..."
+        self.report_progress(progress_msg)
+        vulnerable_buildings_result = create_vulnerable_buildings_result(lizard_url, api_key, self.scenario_instance)
+        result_id = vulnerable_buildings_result["result_id"]
+        progress_msg = f'Spawn processing of the "vulnerable buildings" result task...'
+        self.report_progress(progress_msg)
+        process_task = create_buildings_flood_risk_task(
+            lizard_url, api_key, self.scenario_instance, result_id, self.calculation_method, self.output_format
+        )
+        process_task_id = process_task["task_id"]
+        # Check status of task
+        progress_msg = f"Check processing task status..."
+        self.report_progress(progress_msg)
+        task_processed = False
+        while not task_processed:
+            task_status = self.downloader.get_task_status(process_task_id)
+            if task_status in success_statuses:
+                task_processed = True
+            elif task_status in in_progress_statuses:
+                continue
+            else:
+                error_msg = f"Task {process_task_id} failed, status was: {task_status}"
+                raise LizardFloodRiskAnalysisError(error_msg)
+            time.sleep(self.TASK_CHECK_SLEEP_TIME)
+
+    @pyqtSlot()
+    def run(self):
+        """Run flood risk analysis for buildings."""
+        try:
+            self.report_progress(increase_current_step=False)
+            self.analyze_buildings_flood_risk()
+            self.report_finished("Scenario flood risk analysis finished.")
+        except LizardFloodRiskAnalysisError as e:
+            self.report_failure(str(e))
+        except Exception as e:
+            error_msg = f"Buildings flood risk analysis failed due to the following error: {e}"
+            self.report_failure(error_msg)
+
+    def report_progress(self, progress_message=None, increase_current_step=True):
+        """Report worker progress."""
+        current_progress = int(self.current_step * self.percentage_per_step)
+        if increase_current_step:
+            self.current_step += 1
+        self.signals.analysis_progress.emit(
+            self.scenario_instance, progress_message, current_progress, self.total_progress
+        )
+
+    def report_failure(self, error_message):
+        """Report worker failure message."""
+        self.signals.analysis_failed.emit(self.scenario_instance, error_message)
+
+    def report_finished(self, message):
+        """Report worker finished message."""
+        self.signals.analysis_finished.emit(self.scenario_instance, message)

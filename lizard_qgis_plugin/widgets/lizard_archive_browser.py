@@ -379,6 +379,15 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
             map_canvas.refresh()
             self.log_feedback(f"WMS layers for scenario '{scenario_name}' added to the project.")
 
+    def analyse_flood_risk_buildings(self):
+        index = self.scenario_tv.currentIndex()
+        if not index.isValid():
+            return
+        current_row = index.row()
+        scenario_uuid_item = self.scenario_model.item(current_row, self.SCENARIO_UUID_COLUMN_IDX)
+        scenario_uuid = scenario_uuid_item.text()
+        # TODO: Continue here
+
     def download_results(self):
         """Download selected (checked) result files."""
         index = self.scenario_tv.currentIndex()
@@ -458,6 +467,24 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
 
     def on_download_failed(self, scenario_instance, error_message):
         """Feedback on download failed signal."""
+        self.plugin.communication.clear_message_bar()
+        self.plugin.communication.bar_error(error_message)
+        self.log_feedback(error_message, Qgis.Critical)
+
+    def on_flood_risk_analysis_progress(self, scenario_instance, progress_message, current_progress, total_progress):
+        """Feedback on flood risk analysis progress signal."""
+        scenario_name = scenario_instance["name"]
+        msg = progress_message if progress_message else f"Processing '{scenario_name}' buildings flood risk analysis..."
+        self.plugin.communication.progress_bar(msg, 0, total_progress, current_progress, clear_msg_bar=True)
+
+    def on_flood_risk_analysis_finished(self, scenario_instance, message):
+        """Feedback on flood risk analysis finished signal."""
+        self.plugin.communication.clear_message_bar()
+        self.plugin.communication.bar_info(message)
+        self.log_feedback(message)
+
+    def on_flood_risk_analysis_failed(self, scenario_instance, error_message):
+        """Feedback on flood risk analysis failed signal."""
         self.plugin.communication.clear_message_bar()
         self.plugin.communication.bar_error(error_message)
         self.log_feedback(error_message, Qgis.Critical)

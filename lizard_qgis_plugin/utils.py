@@ -341,6 +341,48 @@ def create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, projection=
     return raster_tasks
 
 
+def upload_local_file(upload_url, local_filepath):
+    """Upload local file."""
+    with open(local_filepath, "rb") as file:
+        response = requests.put(upload_url, data=file)
+        return response
+
+
+def create_buildings_result(lizard_url, api_key, scenario_instance):
+    """Create Lizard buildings result."""
+    scenario_id = scenario_instance["uuid"]
+    url = f"{lizard_url}scenarios/{scenario_id}/results/"
+    payload = {"name": "buildings", "code": "buildings", "family": "Raw"}
+    r = requests.get(url=url, auth=("__key__", api_key), params=payload)
+    r.raise_for_status()
+    buildings_result = r.json()
+    return buildings_result
+
+
+def create_vulnerable_buildings_result(lizard_url, api_key, scenario_instance):
+    """Create Lizard vulnerable buildings result."""
+    scenario_id = scenario_instance["uuid"]
+    url = f"{lizard_url}scenarios/{scenario_id}/results/"
+    payload = {"name": "vulnerable_buildings", "code": "vulnerable_buildings", "family": "Vulnerable_Buildings"}
+    r = requests.get(url=url, auth=("__key__", api_key), params=payload)
+    r.raise_for_status()
+    vulnerable_buildings_result = r.json()
+    return vulnerable_buildings_result
+
+
+def create_buildings_flood_risk_task(
+    lizard_url, api_key, scenario_instance, result_id, calculation_method="dgbc", output_format="gpkg"
+):
+    """Create Lizard buildings flood risk task."""
+    scenario_id = scenario_instance["uuid"]
+    url = f"{lizard_url}scenarios/{scenario_id}/results/{result_id}/process/"
+    payload = {"method": calculation_method, "output_format": output_format}
+    r = requests.get(url=url, auth=("__key__", api_key), params=payload)
+    r.raise_for_status()
+    process_task = r.json()
+    return process_task
+
+
 def build_vrt(output_filepath, raster_filepaths, **vrt_options):
     """Build VRT for the list of rasters."""
     options = gdal.BuildVRTOptions(**vrt_options)
