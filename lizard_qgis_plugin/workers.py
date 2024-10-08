@@ -404,7 +404,7 @@ class BuildingsFloodRiskAnalyzer(QRunnable):
         progress_msg = f"Create a \"vulnerable buildings\" result object for the scenario '{self.scenario_name}'..."
         self.report_progress(progress_msg)
         vulnerable_buildings_result = create_vulnerable_buildings_result(lizard_url, api_key, self.scenario_instance)
-        result_id = vulnerable_buildings_result["result_id"]
+        result_id = vulnerable_buildings_result["id"]
         progress_msg = f'Spawn processing of the "vulnerable buildings" result task...'
         self.report_progress(progress_msg)
         process_task = create_buildings_flood_risk_task(

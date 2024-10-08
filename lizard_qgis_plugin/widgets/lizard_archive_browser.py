@@ -36,13 +36,56 @@ from lizard_qgis_plugin.utils import (
     try_to_write,
     unify_spatial_boundaries,
 )
-from lizard_qgis_plugin.workers import RasterDownloader, ScenarioItemsDownloader
+from lizard_qgis_plugin.workers import BuildingsFloodRiskAnalyzer, RasterDownloader, ScenarioItemsDownloader
 
 base_dir = os.path.dirname(__file__)
 lizard_uicls, lizard_basecls = uic.loadUiType(os.path.join(base_dir, "ui", "lizard.ui"))
 download_settings_uicls, download_settings_basecls = uic.loadUiType(
     os.path.join(base_dir, "ui", "raster_download_settings.ui")
 )
+buildings_flood_risk_uicls, buildings_flood_risk_basecls = uic.loadUiType(
+    os.path.join(base_dir, "ui", "buildings_flood_risk.ui")
+)
+
+
+class BuildingsFloodRiskDialog(buildings_flood_risk_uicls, buildings_flood_risk_basecls):
+    def __init__(self, lizard_browser, parent=None):
+        super().__init__(parent)
+        self.setupUi(self)
+        self.lizard_browser = lizard_browser
+        self.buildings_layer_cbo.setFilters(QgsMapLayerProxyModel.PolygonLayer)
+        self.floor_level_field_cbo.setFilters(QgsFieldProxyModel.Numeric)
+        self.method_cbo.currentIndexChanged.connect(self.on_method_changed)
+        self.buildings_layer_cbo.layerChanged.connect(self.on_buildings_polygon_changed)
+        self.floor_level_field_cbo.setLayer(self.buildings_layer_cbo.currentLayer())
+        self.accept_pb.clicked.connect(self.accept)
+        self.cancel_pb.clicked.connect(self.reject)
+        self.populate_flood_risk_buildings_calculation_methods()
+
+    def on_method_changed(self):
+        """Enable/disable buildings floor level column widgets."""
+        if self.method_cbo.currentText() == "Advanced":
+            self.floor_level_label.setEnabled(True)
+            self.floor_level_field_cbo.setEnabled(True)
+        else:
+            self.floor_level_label.setDisabled(True)
+            self.floor_level_field_cbo.setDisabled(True)
+
+    def on_buildings_polygon_changed(self, layer):
+        """Refresh field list on buildings polygon change."""
+        self.floor_level_field_cbo.setLayer(layer)
+        if layer is None:
+            self.accept_pb.setDisabled(True)
+        else:
+            self.accept_pb.setEnabled(True)
+
+    def populate_flood_risk_buildings_calculation_methods(self):
+        """Populate flood risk buildings calculation methods."""
+        for method_name in self.lizard_browser.current_scenario_flood_risk_methods:
+            self.method_cbo.addItem(method_name, method_name.lower())
+        self.output_format_cbo.addItem("GeoPackage", "gpkg")
+        self.output_format_cbo.addItem("GeoJSON", "geojson")
+        self.on_buildings_polygon_changed(self.buildings_layer_cbo.currentLayer())
 
 
 class RasterDownloadSettings(download_settings_uicls, download_settings_basecls):
@@ -123,6 +166,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         self.feedback_lv.setModel(self.feedback_model)
         self.current_scenario_instances = {}
         self.current_scenario_results = {}
+        self.current_scenario_flood_risk_methods = []
         self.current_raster_instances = {}
         self.pb_prev_page.clicked.connect(self.previous_scenarios)
         self.pb_next_page.clicked.connect(self.next_scenarios)
@@ -130,6 +174,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         self.pb_add_wms.clicked.connect(self.load_scenario_as_wms_layers)
         self.pb_show_files.clicked.connect(self.fetch_results)
         self.pb_download.clicked.connect(self.download_results)
+        self.pb_flood_risk_buildings.clicked.connect(self.analyse_flood_risk_buildings)
         self.toggle_selection_ckb.stateChanged.connect(self.toggle_results)
         self.scenario_search_le.returnPressed.connect(self.search_for_scenarios)
         self.scenario_tv.selectionModel().selectionChanged.connect(self.toggle_scenario_selected)
@@ -163,10 +208,12 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         """Toggle action widgets if any scenario is selected."""
         self.scenario_results_model.clear()
         self.current_scenario_results.clear()
+        self.current_scenario_flood_risk_methods.clear()
         self.pb_download.setDisabled(True)
         self.grp_raster_settings.setDisabled(True)
         self.toggle_selection_ckb.setChecked(False)
         self.toggle_selection_ckb.setDisabled(True)
+        self.pb_flood_risk_buildings.setDisabled(True)
         selection_model = self.scenario_tv.selectionModel()
         if selection_model.hasSelection():
             self.pb_add_wms.setEnabled(True)
@@ -269,6 +316,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
             self.scenario_model.clear()
             self.current_scenario_results.clear()
             self.scenario_results_model.clear()
+            self.current_scenario_flood_risk_methods.clear()
             offset = (self.page_sbox.value() - 1) * self.TABLE_LIMIT
             header = ["Scenario name", "Model name", "Organisation", "User", "Created", "UUID"]
             self.scenario_model.setHorizontalHeaderLabels(header)
@@ -305,6 +353,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         scenario_results = self.plugin.downloader.get_scenario_instance_results(scenario_uuid)
         self.current_scenario_results.clear()
         self.scenario_results_model.clear()
+        self.current_scenario_flood_risk_methods.clear()
         header, checkboxes_width = ["Item", "File name"], []
         self.scenario_results_model.setHorizontalHeaderLabels(header)
         for row_number, result in enumerate(scenario_results, start=0):
@@ -313,6 +362,11 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
             result_name = result["name"]
             result_attachment_url = result["attachment_url"]
             result_raster = result["raster"]
+            result_code = result["code"]
+            if result_code == "depth-max-dtri":
+                self.current_scenario_flood_risk_methods.append("DGBC")
+            elif result_code == "s1-max-dtri":
+                self.current_scenario_flood_risk_methods.append("Advanced")
             if result_raster:
                 raster_instance = get_url_raster_instance(self.plugin.downloader.get_api_key(), result_raster)
                 if raster_instance["temporal"]:
@@ -338,6 +392,8 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
             self.scenario_results_tv.resizeColumnToContents(i)
         if checkboxes_width:
             self.scenario_results_tv.setColumnWidth(0, max(checkboxes_width))
+        if self.current_scenario_flood_risk_methods:
+            self.pb_flood_risk_buildings.setEnabled(True)
         self.pb_download.setEnabled(True)
         self.grp_raster_settings.setEnabled(True)
         self.toggle_selection_ckb.setEnabled(True)
@@ -380,13 +436,16 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
             self.log_feedback(f"WMS layers for scenario '{scenario_name}' added to the project.")
 
     def analyse_flood_risk_buildings(self):
+        """Setup buildings flood risk analysis."""
         index = self.scenario_tv.currentIndex()
         if not index.isValid():
             return
-        current_row = index.row()
-        scenario_uuid_item = self.scenario_model.item(current_row, self.SCENARIO_UUID_COLUMN_IDX)
-        scenario_uuid = scenario_uuid_item.text()
-        # TODO: Continue here
+        buildings_flood_risk_dlg = BuildingsFloodRiskDialog(self)
+        res = buildings_flood_risk_dlg.exec_()
+        if res != QDialog.Accepted:
+            self.raise_()
+            return
+        # TODO: Export building features and start the worker.
 
     def download_results(self):
         """Download selected (checked) result files."""
