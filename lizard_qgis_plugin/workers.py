@@ -379,6 +379,7 @@ class BuildingsFloodRiskAnalyzer(QRunnable):
         super().__init__()
         self.downloader = downloader
         self.scenario_instance = scenario_instance
+        self.scenario_name = self.scenario_instance["name"]
         self.buildings_gpkg = buildings_gpkg
         self.calculation_method = calculation_method
         self.output_format = output_format

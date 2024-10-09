@@ -352,8 +352,9 @@ def create_buildings_result(lizard_url, api_key, scenario_instance):
     """Create Lizard buildings result."""
     scenario_id = scenario_instance["uuid"]
     url = f"{lizard_url}scenarios/{scenario_id}/results/"
+    headers = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
     payload = {"name": "buildings", "code": "buildings", "family": "Raw"}
-    r = requests.get(url=url, auth=("__key__", api_key), params=payload)
+    r = requests.post(url=url, auth=("__key__", api_key), data=payload, headers=headers)
     r.raise_for_status()
     buildings_result = r.json()
     return buildings_result
@@ -364,7 +365,7 @@ def create_vulnerable_buildings_result(lizard_url, api_key, scenario_instance):
     scenario_id = scenario_instance["uuid"]
     url = f"{lizard_url}scenarios/{scenario_id}/results/"
     payload = {"name": "vulnerable_buildings", "code": "vulnerable_buildings", "family": "Vulnerable_Buildings"}
-    r = requests.get(url=url, auth=("__key__", api_key), params=payload)
+    r = requests.post(url=url, auth=("__key__", api_key), data=payload)
     r.raise_for_status()
     vulnerable_buildings_result = r.json()
     return vulnerable_buildings_result
@@ -433,6 +434,29 @@ def wkt_polygon_layer(polygon_wkt, polygon_layer_name="clip_layer", epsg="EPSG:4
     memory_polygon_layer.addFeature(cut_line_feat)
     memory_polygon_layer.commitChanges()
     return memory_polygon_layer
+
+
+def spawn_memory_buildings_layer(building_features, floor_level_field_name=None, epsg="EPSG:4326"):
+    """Spawn building polygons layer out of the derived features."""
+    geometry_type = "Polygon"
+    uri = f"{geometry_type}?crs={epsg}"
+    memory_buildings_layer = QgsVectorLayer(uri, "buildings", "memory")
+    memory_buildings_layer_dt = memory_buildings_layer.dataProvider()
+    memory_buildings_layer_dt.addAttributes([QgsField("floor_level", QVariant.Double)])
+    memory_buildings_layer.updateFields()
+    memory_buildings_fields = memory_buildings_layer.fields()
+    new_building_features = []
+    for feature in building_features:
+        new_building_feat = QgsFeature(memory_buildings_fields)
+        new_building_geom = QgsGeometry(feature.geometry())
+        new_building_feat.setGeometry(new_building_geom)
+        if floor_level_field_name:
+            new_building_feat["floor_level"] = feature[floor_level_field_name]
+        new_building_features.append(new_building_feat)
+    memory_buildings_layer.startEditing()
+    memory_buildings_layer.addFeatures(new_building_features)
+    memory_buildings_layer.commitChanges()
+    return memory_buildings_layer
 
 
 def layer_to_gpkg(layer, gpkg_filename, overwrite=False, driver_name="GPKG"):

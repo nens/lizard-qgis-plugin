@@ -4,6 +4,7 @@ import os
 from copy import deepcopy
 from math import ceil
 from operator import itemgetter
+from tempfile import gettempdir
 
 from qgis.core import (
     Qgis,
@@ -32,7 +33,9 @@ from lizard_qgis_plugin.utils import (
     find_rasters,
     get_capabilities_layer_uris,
     get_url_raster_instance,
+    layer_to_gpkg,
     reproject_geometry,
+    spawn_memory_buildings_layer,
     try_to_write,
     unify_spatial_boundaries,
 )
@@ -54,7 +57,7 @@ class BuildingsFloodRiskDialog(buildings_flood_risk_uicls, buildings_flood_risk_
         self.setupUi(self)
         self.lizard_browser = lizard_browser
         self.buildings_layer_cbo.setFilters(QgsMapLayerProxyModel.PolygonLayer)
-        self.floor_level_field_cbo.setFilters(QgsFieldProxyModel.Numeric)
+        self.floor_level_field_cbo.setFilters(QgsFieldProxyModel.Double)
         self.method_cbo.currentIndexChanged.connect(self.on_method_changed)
         self.buildings_layer_cbo.layerChanged.connect(self.on_buildings_polygon_changed)
         self.floor_level_field_cbo.setLayer(self.buildings_layer_cbo.currentLayer())
@@ -74,6 +77,7 @@ class BuildingsFloodRiskDialog(buildings_flood_risk_uicls, buildings_flood_risk_
     def on_buildings_polygon_changed(self, layer):
         """Refresh field list on buildings polygon change."""
         self.floor_level_field_cbo.setLayer(layer)
+        self.floor_level_field_cbo.setCurrentText("floor_level")
         if layer is None:
             self.accept_pb.setDisabled(True)
         else:
@@ -85,7 +89,10 @@ class BuildingsFloodRiskDialog(buildings_flood_risk_uicls, buildings_flood_risk_
             self.method_cbo.addItem(method_name, method_name.lower())
         self.output_format_cbo.addItem("GeoPackage", "gpkg")
         self.output_format_cbo.addItem("GeoJSON", "geojson")
-        self.on_buildings_polygon_changed(self.buildings_layer_cbo.currentLayer())
+        current_layer = self.buildings_layer_cbo.currentLayer()
+        self.on_buildings_polygon_changed(current_layer)
+        if current_layer is not None and current_layer.selectedFeatureCount() > 0:
+            self.selected_buildings_cb.setChecked(True)
 
 
 class RasterDownloadSettings(download_settings_uicls, download_settings_basecls):
@@ -440,12 +447,44 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         index = self.scenario_tv.currentIndex()
         if not index.isValid():
             return
+        current_row = index.row()
+        scenario_uuid_item = self.scenario_model.item(current_row, self.SCENARIO_UUID_COLUMN_IDX)
+        scenario_uuid = scenario_uuid_item.text()
+        scenario_instance = self.current_scenario_instances[scenario_uuid]
+        scenario_name = scenario_instance["name"]
         buildings_flood_risk_dlg = BuildingsFloodRiskDialog(self)
         res = buildings_flood_risk_dlg.exec_()
         if res != QDialog.Accepted:
             self.raise_()
             return
-        # TODO: Export building features and start the worker.
+        analysis_method = buildings_flood_risk_dlg.method_cbo.currentData()
+        buildings_layer = buildings_flood_risk_dlg.buildings_layer_cbo.currentLayer()
+        selected_buildings_only = buildings_flood_risk_dlg.selected_buildings_cb.isChecked()
+        floor_level_field = (
+            buildings_flood_risk_dlg.floor_level_field_cbo.currentField()
+            if buildings_flood_risk_dlg.floor_level_field_cbo.isEnabled()
+            else None
+        )
+        output_format = buildings_flood_risk_dlg.output_format_cbo.currentData()
+        if selected_buildings_only and buildings_layer.selectedFeatureCount() == 0:
+            warn_message = "No building features selected - please select features and try again."
+            self.log_feedback(warn_message, Qgis.Warning)
+            return
+        epsg = buildings_layer.crs().authid()
+        src_features = (
+            list(buildings_layer.selectedFeatures()) if selected_buildings_only else list(buildings_layer.getFeatures())
+        )
+        buildings_mem_layer = spawn_memory_buildings_layer(src_features, floor_level_field, epsg)
+        buildings_gpkg_path = os.path.join(gettempdir(), "buildings.gpkg")
+        layer_to_gpkg(buildings_mem_layer, buildings_gpkg_path, overwrite=True)
+        buildings_flood_risk_analyzer = BuildingsFloodRiskAnalyzer(
+            self.plugin.downloader, scenario_instance, buildings_gpkg_path, analysis_method, output_format
+        )
+        buildings_flood_risk_analyzer.signals.analysis_progress.connect(self.on_flood_risk_analysis_progress)
+        buildings_flood_risk_analyzer.signals.analysis_finished.connect(self.on_flood_risk_analysis_finished)
+        buildings_flood_risk_analyzer.signals.analysis_failed.connect(self.on_flood_risk_analysis_failed)
+        self.plugin.lizard_tasks_pool.start(buildings_flood_risk_analyzer)
+        self.log_feedback(f"Scenario '{scenario_name}' buildings flood risk analysis task added to the queue.")
 
     def download_results(self):
         """Download selected (checked) result files."""
@@ -499,7 +538,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         scenario_items_downloader.signals.download_progress.connect(self.on_download_progress)
         scenario_items_downloader.signals.download_finished.connect(self.on_download_finished)
         scenario_items_downloader.signals.download_failed.connect(self.on_download_failed)
-        self.plugin.lizard_downloader_pool.start(scenario_items_downloader)
+        self.plugin.lizard_tasks_pool.start(scenario_items_downloader)
         self.log_feedback(f"Scenario '{scenario_name}' results download task added to the queue.")
 
     def on_download_progress(self, downloaded_item_instance, progress_message, current_progress, total_progress):
@@ -766,5 +805,5 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         raster_downloader.signals.download_progress.connect(self.on_download_progress)
         raster_downloader.signals.download_finished.connect(self.on_download_finished)
         raster_downloader.signals.download_failed.connect(self.on_download_failed)
-        self.plugin.lizard_downloader_pool.start(raster_downloader)
+        self.plugin.lizard_tasks_pool.start(raster_downloader)
         self.log_feedback(f"Raster '{raster_name}' download task added to the queue.")

@@ -35,8 +35,8 @@ class ThreediLizardPlugin:
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
         self.downloader = downloader
-        self.lizard_downloader_pool = QThreadPool()
-        self.lizard_downloader_pool.setMaxThreadCount(self.MAX_DOWNLOAD_THREAD_COUNT)
+        self.lizard_tasks_pool = QThreadPool()
+        self.lizard_tasks_pool.setMaxThreadCount(self.MAX_DOWNLOAD_THREAD_COUNT)
         self.lizard_browser = None
         self.actions = []
         self.menu = self.PLUGIN_NAME
