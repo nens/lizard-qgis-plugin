@@ -348,12 +348,26 @@ def upload_local_file(upload_url, local_filepath):
         return response
 
 
+def clean_up_buildings_result(lizard_url, api_key, scenario_instance, limit=100):
+    """Remove buildings results from scenario instance."""
+    building_codes = {"buildings", "vulnerable_buildings"}
+    scenario_id = scenario_instance["uuid"]
+    url = f"{lizard_url}scenarios/{scenario_id}/results/"
+    results_response = requests.get(url=url, auth=("__key__", api_key), params={"limit": limit})
+    results_response.raise_for_status()
+    existing_results = [res for res in results_response.json()["results"] if res["code"] in building_codes]
+    for res in existing_results:
+        res_id = res["id"]
+        delete_url = f"{url}{res_id}/"
+        requests.delete(url=delete_url, auth=("__key__", api_key))
+
+
 def create_buildings_result(lizard_url, api_key, scenario_instance):
     """Create Lizard buildings result."""
     scenario_id = scenario_instance["uuid"]
     url = f"{lizard_url}scenarios/{scenario_id}/results/"
     payload = {"name": "buildings", "code": "buildings", "family": "Raw"}
-    r = requests.post(url=url, auth=("__key__", api_key), data=payload)
+    r = requests.post(url=url, auth=("__key__", api_key), json=payload)
     r.raise_for_status()
     buildings_result = r.json()
     return buildings_result
@@ -364,7 +378,7 @@ def create_vulnerable_buildings_result(lizard_url, api_key, scenario_instance):
     scenario_id = scenario_instance["uuid"]
     url = f"{lizard_url}scenarios/{scenario_id}/results/"
     payload = {"name": "vulnerable_buildings", "code": "vulnerable_buildings", "family": "Vulnerable_Buildings"}
-    r = requests.post(url=url, auth=("__key__", api_key), data=payload)
+    r = requests.post(url=url, auth=("__key__", api_key), json=payload)
     r.raise_for_status()
     vulnerable_buildings_result = r.json()
     return vulnerable_buildings_result
@@ -377,7 +391,7 @@ def create_buildings_flood_risk_task(
     scenario_id = scenario_instance["uuid"]
     url = f"{lizard_url}scenarios/{scenario_id}/results/{result_id}/process/"
     payload = {"method": calculation_method, "output_format": output_format}
-    r = requests.post(url=url, auth=("__key__", api_key), data=payload)
+    r = requests.get(url=url, auth=("__key__", api_key), params=payload)
     r.raise_for_status()
     process_task = r.json()
     return process_task

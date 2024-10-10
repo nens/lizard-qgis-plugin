@@ -13,6 +13,7 @@ from threedi_mi_utils import bypass_max_path_limit
 
 from lizard_qgis_plugin.utils import (
     build_vrt,
+    clean_up_buildings_result,
     clip_raster,
     create_buildings_flood_risk_task,
     create_buildings_result,
@@ -385,7 +386,7 @@ class BuildingsFloodRiskAnalyzer(QRunnable):
         self.output_format = output_format
         self.total_progress = 100
         self.current_step = 0
-        self.number_of_steps = 4
+        self.number_of_steps = 5
         self.percentage_per_step = self.total_progress / self.number_of_steps
         self.signals = LizardFloodRiskAnalysisSignals()
 
@@ -394,6 +395,10 @@ class BuildingsFloodRiskAnalyzer(QRunnable):
         in_progress_statuses = {"PENDING", "UNKNOWN", "STARTED", "RETRY"}
         lizard_url = self.downloader.LIZARD_URL
         api_key = self.downloader.get_api_key()
+        # Remove existing buildings results objects from the scenario
+        progress_msg = f"Remove existing \"buildings\" results objects from the scenario '{self.scenario_name}'..."
+        self.report_progress(progress_msg)
+        clean_up_buildings_result(lizard_url, api_key, self.scenario_instance)
         # Create a "buildings" result object for the scenario
         progress_msg = f"Create a \"buildings\" result object for the scenario '{self.scenario_name}'..."
         self.report_progress(progress_msg)
@@ -401,7 +406,7 @@ class BuildingsFloodRiskAnalyzer(QRunnable):
         progress_msg = f"Upload buildings for the scenario '{self.scenario_name}'..."
         self.report_progress(progress_msg)
         buildings_result_upload_url = buildings_result["upload_url"]
-        upload_local_file(self.buildings_gpkg, buildings_result_upload_url)
+        upload_local_file(buildings_result_upload_url, self.buildings_gpkg)
         progress_msg = f"Create a \"vulnerable buildings\" result object for the scenario '{self.scenario_name}'..."
         self.report_progress(progress_msg)
         vulnerable_buildings_result = create_vulnerable_buildings_result(lizard_url, api_key, self.scenario_instance)
