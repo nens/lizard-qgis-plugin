@@ -352,9 +352,8 @@ def create_buildings_result(lizard_url, api_key, scenario_instance):
     """Create Lizard buildings result."""
     scenario_id = scenario_instance["uuid"]
     url = f"{lizard_url}scenarios/{scenario_id}/results/"
-    headers = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
     payload = {"name": "buildings", "code": "buildings", "family": "Raw"}
-    r = requests.post(url=url, auth=("__key__", api_key), data=payload, headers=headers)
+    r = requests.post(url=url, auth=("__key__", api_key), data=payload)
     r.raise_for_status()
     buildings_result = r.json()
     return buildings_result
@@ -378,7 +377,7 @@ def create_buildings_flood_risk_task(
     scenario_id = scenario_instance["uuid"]
     url = f"{lizard_url}scenarios/{scenario_id}/results/{result_id}/process/"
     payload = {"method": calculation_method, "output_format": output_format}
-    r = requests.get(url=url, auth=("__key__", api_key), params=payload)
+    r = requests.post(url=url, auth=("__key__", api_key), data=payload)
     r.raise_for_status()
     process_task = r.json()
     return process_task
