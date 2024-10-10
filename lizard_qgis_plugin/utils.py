@@ -391,7 +391,7 @@ def create_buildings_flood_risk_task(
     scenario_id = scenario_instance["uuid"]
     url = f"{lizard_url}scenarios/{scenario_id}/results/{result_id}/process/"
     payload = {"method": calculation_method, "output_format": output_format}
-    r = requests.get(url=url, auth=("__key__", api_key), params=payload)
+    r = requests.post(url=url, auth=("__key__", api_key), json=payload)
     r.raise_for_status()
     process_task = r.json()
     return process_task
