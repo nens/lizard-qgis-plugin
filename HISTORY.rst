@@ -1,6 +1,13 @@
 History
 =======
 
+0.3.6 (unreleased)
+-------------------
+
+- Fixes/enhancements: #35, #37
+- Implemented ability to run buildings flood risk analysis (#36).
+
+
 0.3.5 (2024-9-12)
 ------------------
 

@@ -16,6 +16,7 @@ from qgis.core import (
     QgsGeometry,
     QgsLayerTreeGroup,
     QgsLayerTreeLayer,
+    QgsPointXY,
     QgsProject,
     QgsVectorFileWriter,
     QgsVectorLayer,
@@ -123,6 +124,19 @@ def get_capabilities_layer_uris(wms_url):
     return wms_uris
 
 
+def get_scenario_instance_results(lizard_url, scenario_instance, subendpoint=None, results_limit=100):
+    """Get the scenario instance results, either from basic endpoint, or specific subendpoint."""
+    scenario_uuid = scenario_instance["uuid"]
+    if subendpoint:
+        url = f"{lizard_url}scenarios/{scenario_uuid}/results/{subendpoint}"
+    else:
+        url = f"{lizard_url}scenarios/{scenario_uuid}/results"
+    r = requests.get(url=url, auth=("__key__", get_api_key_auth_manager()), params={"limit": results_limit})
+    r.raise_for_status()
+    available_results = r.json()["results"]
+    return available_results
+
+
 def get_available_rasters_list(lizard_url):
     """List all available rasters."""
     url = f"{lizard_url}rasters/"
@@ -194,7 +208,7 @@ def try_to_write(working_dir):
     os.remove(test_file_path)
 
 
-def split_scenario_extent(scenario_instance, max_pixel_count=1 * 10**8):
+def split_scenario_extent(scenario_instance, resolution=None, max_pixel_count=1 * 10**8):
     """
     Split raster task spatial bounds to fit in to maximum pixel count limit.
     Reimplemented code from https://github.com/nens/threedi-scenario-downloader
@@ -203,8 +217,12 @@ def split_scenario_extent(scenario_instance, max_pixel_count=1 * 10**8):
     y1 = scenario_instance["origin_y"]
     x2 = scenario_instance["upper_bound_x"]
     y2 = scenario_instance["upper_bound_y"]
-    pixelsize_x = abs(scenario_instance["pixelsize_x"])
-    pixelsize_y = abs(scenario_instance["pixelsize_y"])
+    if resolution is None:
+        pixelsize_x = scenario_instance["pixelsize_x"]
+        pixelsize_y = scenario_instance["pixelsize_y"]
+    else:
+        pixelsize_x = resolution
+        pixelsize_y = resolution
     width = abs((x2 - x1) / pixelsize_x)
     height = abs((y2 - y1) / pixelsize_y)
     if not width.is_integer():
@@ -336,6 +354,62 @@ def create_raster_tasks(lizard_url, api_key, raster, spatial_bounds, projection=
     return raster_tasks
 
 
+def upload_local_file(upload_url, local_filepath):
+    """Upload local file."""
+    with open(local_filepath, "rb") as file:
+        response = requests.put(upload_url, data=file)
+        return response
+
+
+def clean_up_buildings_result(lizard_url, api_key, scenario_instance, limit=100):
+    """Remove buildings results from scenario instance."""
+    building_codes = {"buildings", "vulnerable_buildings"}
+    scenario_id = scenario_instance["uuid"]
+    url = f"{lizard_url}scenarios/{scenario_id}/results/"
+    results_response = requests.get(url=url, auth=("__key__", api_key), params={"limit": limit})
+    results_response.raise_for_status()
+    existing_results = [res for res in results_response.json()["results"] if res["code"] in building_codes]
+    for res in existing_results:
+        res_id = res["id"]
+        delete_url = f"{url}{res_id}/"
+        requests.delete(url=delete_url, auth=("__key__", api_key))
+
+
+def create_buildings_result(lizard_url, api_key, scenario_instance):
+    """Create Lizard buildings result."""
+    scenario_id = scenario_instance["uuid"]
+    url = f"{lizard_url}scenarios/{scenario_id}/results/"
+    payload = {"name": "buildings", "code": "buildings", "family": "Raw"}
+    r = requests.post(url=url, auth=("__key__", api_key), json=payload)
+    r.raise_for_status()
+    buildings_result = r.json()
+    return buildings_result
+
+
+def create_vulnerable_buildings_result(lizard_url, api_key, scenario_instance):
+    """Create Lizard vulnerable buildings result."""
+    scenario_id = scenario_instance["uuid"]
+    url = f"{lizard_url}scenarios/{scenario_id}/results/"
+    payload = {"name": "vulnerable_buildings", "code": "vulnerable_buildings", "family": "Vulnerable_Buildings"}
+    r = requests.post(url=url, auth=("__key__", api_key), json=payload)
+    r.raise_for_status()
+    vulnerable_buildings_result = r.json()
+    return vulnerable_buildings_result
+
+
+def create_buildings_flood_risk_task(
+    lizard_url, api_key, scenario_instance, result_id, calculation_method="dgbc", output_format="gpkg"
+):
+    """Create Lizard buildings flood risk task."""
+    scenario_id = scenario_instance["uuid"]
+    url = f"{lizard_url}scenarios/{scenario_id}/results/{result_id}/process/"
+    payload = {"method": calculation_method, "output_format": output_format}
+    r = requests.post(url=url, auth=("__key__", api_key), json=payload)
+    r.raise_for_status()
+    process_task = r.json()
+    return process_task
+
+
 def build_vrt(output_filepath, raster_filepaths, **vrt_options):
     """Build VRT for the list of rasters."""
     options = gdal.BuildVRTOptions(**vrt_options)
@@ -355,6 +429,23 @@ def reproject_geometry(geometry, src_crs, dst_crs, transformation=None):
     return geometry
 
 
+def unify_spatial_boundaries(dataset_instance, source_crs, destination_crs):
+    """Unify spatial boundaries of derived dataset instance (scenario or raster)."""
+    dataset_boundaries = [("origin_x", "origin_y"), ("upper_bound_x", "upper_bound_y")]
+    for x_coord_name, y_coord_name in dataset_boundaries:
+        src_x_coord = dataset_instance[x_coord_name]
+        src_y_coord = dataset_instance[y_coord_name]
+        if src_x_coord is None or src_y_coord is None:
+            continue
+        src_point_geom = QgsGeometry.fromPointXY(QgsPointXY(src_x_coord, src_y_coord))
+        dst_point_geom = reproject_geometry(src_point_geom, source_crs, destination_crs)
+        dst_point = dst_point_geom.asPoint()
+        dst_x_coord = dst_point.x()
+        dst_y_coord = dst_point.y()
+        dataset_instance[x_coord_name] = dst_x_coord
+        dataset_instance[y_coord_name] = dst_y_coord
+
+
 def wkt_polygon_layer(polygon_wkt, polygon_layer_name="clip_layer", epsg="EPSG:4326"):
     """Spawn (multi)polygon layer out of single WKT polygon geometry."""
     geometry_type = "MultiPolygon" if polygon_wkt.lower().startswith("multi") else "Polygon"
@@ -369,6 +460,29 @@ def wkt_polygon_layer(polygon_wkt, polygon_layer_name="clip_layer", epsg="EPSG:4
     memory_polygon_layer.addFeature(cut_line_feat)
     memory_polygon_layer.commitChanges()
     return memory_polygon_layer
+
+
+def spawn_memory_buildings_layer(building_features, floor_level_field_name=None, epsg="EPSG:4326"):
+    """Spawn building polygons layer out of the derived features."""
+    geometry_type = "Polygon"
+    uri = f"{geometry_type}?crs={epsg}"
+    memory_buildings_layer = QgsVectorLayer(uri, "buildings", "memory")
+    memory_buildings_layer_dt = memory_buildings_layer.dataProvider()
+    memory_buildings_layer_dt.addAttributes([QgsField("floor_level", QVariant.Double)])
+    memory_buildings_layer.updateFields()
+    memory_buildings_fields = memory_buildings_layer.fields()
+    new_building_features = []
+    for feature in building_features:
+        new_building_feat = QgsFeature(memory_buildings_fields)
+        new_building_geom = QgsGeometry(feature.geometry())
+        new_building_feat.setGeometry(new_building_geom)
+        if floor_level_field_name:
+            new_building_feat["floor_level"] = feature[floor_level_field_name]
+        new_building_features.append(new_building_feat)
+    memory_buildings_layer.startEditing()
+    memory_buildings_layer.addFeatures(new_building_features)
+    memory_buildings_layer.commitChanges()
+    return memory_buildings_layer
 
 
 def layer_to_gpkg(layer, gpkg_filename, overwrite=False, driver_name="GPKG"):
