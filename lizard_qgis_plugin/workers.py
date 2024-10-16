@@ -386,7 +386,7 @@ class BuildingsFloodRiskAnalyzer(QRunnable):
         self.output_format = output_format
         self.total_progress = 100
         self.current_step = 0
-        self.number_of_steps = 5
+        self.number_of_steps = 6
         self.percentage_per_step = self.total_progress / self.number_of_steps
         self.signals = LizardFloodRiskAnalysisSignals()
 
@@ -411,6 +411,7 @@ class BuildingsFloodRiskAnalyzer(QRunnable):
         self.report_progress(progress_msg)
         vulnerable_buildings_result = create_vulnerable_buildings_result(lizard_url, api_key, self.scenario_instance)
         result_id = vulnerable_buildings_result["id"]
+        time.sleep(self.TASK_CHECK_SLEEP_TIME)
         progress_msg = f'Spawn processing of the "vulnerable buildings" result task...'
         self.report_progress(progress_msg)
         process_task = create_buildings_flood_risk_task(
@@ -442,7 +443,10 @@ class BuildingsFloodRiskAnalyzer(QRunnable):
         except LizardFloodRiskAnalysisError as e:
             self.report_failure(str(e))
         except Exception as e:
-            error_msg = f"Buildings flood risk analysis failed due to the following error: {e}"
+            try:
+                error_msg = f"Buildings flood risk analysis failed due to the following error: {e.response.text}"
+            except AttributeError:
+                error_msg = f"Buildings flood risk analysis failed due to the following error: {e}"
             self.report_failure(error_msg)
 
     def report_progress(self, progress_message=None, increase_current_step=True):

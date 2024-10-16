@@ -32,6 +32,7 @@ from lizard_qgis_plugin.utils import (
     create_tree_group,
     find_rasters,
     get_capabilities_layer_uris,
+    get_scenario_instance_results,
     get_url_raster_instance,
     layer_to_gpkg,
     reproject_geometry,
@@ -357,7 +358,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         scenario_uuid_item = self.scenario_model.item(current_row, self.SCENARIO_UUID_COLUMN_IDX)
         scenario_uuid = scenario_uuid_item.text()
         scenario_instance = self.current_scenario_instances[scenario_uuid]
-        scenario_results = self.plugin.downloader.get_scenario_instance_results(scenario_uuid)
+        scenario_results = get_scenario_instance_results(self.plugin.downloader.LIZARD_URL, scenario_instance)
         self.current_scenario_results.clear()
         self.scenario_results_model.clear()
         self.current_scenario_flood_risk_methods.clear()
@@ -580,6 +581,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         self.plugin.communication.clear_message_bar()
         self.plugin.communication.bar_info(message)
         self.log_feedback(message)
+        self.fetch_results()
 
     def on_flood_risk_analysis_failed(self, scenario_instance, error_message):
         """Feedback on flood risk analysis failed signal."""

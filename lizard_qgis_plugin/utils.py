@@ -124,6 +124,19 @@ def get_capabilities_layer_uris(wms_url):
     return wms_uris
 
 
+def get_scenario_instance_results(lizard_url, scenario_instance, subendpoint=None, results_limit=100):
+    """Get the scenario instance results, either from basic endpoint, or specific subendpoint."""
+    scenario_uuid = scenario_instance["uuid"]
+    if subendpoint:
+        url = f"{lizard_url}scenarios/{scenario_uuid}/results/{subendpoint}"
+    else:
+        url = f"{lizard_url}scenarios/{scenario_uuid}/results"
+    r = requests.get(url=url, auth=("__key__", get_api_key_auth_manager()), params={"limit": results_limit})
+    r.raise_for_status()
+    available_results = r.json()["results"]
+    return available_results
+
+
 def get_available_rasters_list(lizard_url):
     """List all available rasters."""
     url = f"{lizard_url}rasters/"
