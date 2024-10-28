@@ -16,6 +16,7 @@ from qgis.core import (
     QgsGeometry,
     QgsLayerTreeGroup,
     QgsLayerTreeLayer,
+    QgsPointXY,
     QgsProject,
     QgsVectorFileWriter,
     QgsVectorLayer,
@@ -194,7 +195,7 @@ def try_to_write(working_dir):
     os.remove(test_file_path)
 
 
-def split_scenario_extent(scenario_instance, max_pixel_count=1 * 10**8):
+def split_scenario_extent(scenario_instance, resolution=None, max_pixel_count=1 * 10**8):
     """
     Split raster task spatial bounds to fit in to maximum pixel count limit.
     Reimplemented code from https://github.com/nens/threedi-scenario-downloader
@@ -203,8 +204,12 @@ def split_scenario_extent(scenario_instance, max_pixel_count=1 * 10**8):
     y1 = scenario_instance["origin_y"]
     x2 = scenario_instance["upper_bound_x"]
     y2 = scenario_instance["upper_bound_y"]
-    pixelsize_x = abs(scenario_instance["pixelsize_x"])
-    pixelsize_y = abs(scenario_instance["pixelsize_y"])
+    if resolution is None:
+        pixelsize_x = scenario_instance["pixelsize_x"]
+        pixelsize_y = scenario_instance["pixelsize_y"]
+    else:
+        pixelsize_x = resolution
+        pixelsize_y = resolution
     width = abs((x2 - x1) / pixelsize_x)
     height = abs((y2 - y1) / pixelsize_y)
     if not width.is_integer():
@@ -353,6 +358,23 @@ def reproject_geometry(geometry, src_crs, dst_crs, transformation=None):
         transformation = QgsCoordinateTransform(src_crs, dst_crs, transform_context)
     geometry.transform(transformation)
     return geometry
+
+
+def unify_spatial_boundaries(dataset_instance, source_crs, destination_crs):
+    """Unify spatial boundaries of derived dataset instance (scenario or raster)."""
+    dataset_boundaries = [("origin_x", "origin_y"), ("upper_bound_x", "upper_bound_y")]
+    for x_coord_name, y_coord_name in dataset_boundaries:
+        src_x_coord = dataset_instance[x_coord_name]
+        src_y_coord = dataset_instance[y_coord_name]
+        if src_x_coord is None or src_y_coord is None:
+            continue
+        src_point_geom = QgsGeometry.fromPointXY(QgsPointXY(src_x_coord, src_y_coord))
+        dst_point_geom = reproject_geometry(src_point_geom, source_crs, destination_crs)
+        dst_point = dst_point_geom.asPoint()
+        dst_x_coord = dst_point.x()
+        dst_y_coord = dst_point.y()
+        dataset_instance[x_coord_name] = dst_x_coord
+        dataset_instance[y_coord_name] = dst_y_coord
 
 
 def wkt_polygon_layer(polygon_wkt, polygon_layer_name="clip_layer", epsg="EPSG:4326"):
