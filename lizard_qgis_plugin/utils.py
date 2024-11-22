@@ -417,6 +417,7 @@ def clip_raster(raster_src, polygon_clip_gpkg, polygon_clip_layer="clip_layer", 
         cutlineLayer=polygon_clip_layer,
         cropToCutline=True,
         multithread=True,
+        creationOptions=["COMPRESS=DEFLATE", "TILED=YES", "BLOCKXSIZE=512", "BLOCKYSIZE=512"],
         warpOptions=["NUM_THREADS=ALL_CPUS"],
     )
     raster_location = os.path.dirname(raster_src)
