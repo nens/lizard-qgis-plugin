@@ -5,7 +5,7 @@ import sys
 
 MAIN_DIR = os.path.dirname(os.path.abspath(__file__))
 REQUIRED_SCENARIO_DOWNLOADER_VERSION = "1.4"
-REQUIRED_3DI_MI_UTILS_VERSION = "0.1.2"
+REQUIRED_3DI_MI_UTILS_VERSION = "0.1.9"
 SCENARIO_DOWNLOADER_WHEEL = os.path.join(
     MAIN_DIR, f"threedi_scenario_downloader-{REQUIRED_SCENARIO_DOWNLOADER_VERSION}-py3-none-any.whl"
 )
