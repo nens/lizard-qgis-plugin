@@ -6,6 +6,7 @@ History
 
 - Fixes/enhancements: #40
 - Bump threedi-mi-utils to 0.1.9
+- Added additional dependencies.
 
 
 0.3.6 (2024-11-12)
