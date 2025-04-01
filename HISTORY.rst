@@ -1,7 +1,7 @@
 History
 =======
 
-0.3.7 (unreleased)
+0.4.0 (2025-04-01)
 -------------------
 
 - Fixes/enhancements: #40

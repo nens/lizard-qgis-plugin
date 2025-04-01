@@ -8,7 +8,7 @@ name=Lizard
 qgisMinimumVersion=3.22
 qgisMaximumVersion=3.99
 description=Lizard QGIS plugin
-version=0.3.6
+version=0.4.0
 author=Nelen & Schuurmans
 email=servicedesk@nelen-schuurmans.nl
 
