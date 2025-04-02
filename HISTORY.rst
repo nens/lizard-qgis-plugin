@@ -1,7 +1,7 @@
 History
 =======
 
-0.4.1 (unreleased)
+0.4.1 (2025-04-02)
 
 - Bumped threedi-mi-utils to 0.1.10.
   
