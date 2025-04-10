@@ -5,38 +5,28 @@ from copy import deepcopy
 from math import ceil
 from operator import itemgetter
 
-from qgis.core import (
-    Qgis,
-    QgsCoordinateReferenceSystem,
-    QgsFieldProxyModel,
-    QgsGeometry,
-    QgsMapLayerProxyModel,
-    QgsProject,
-    QgsRasterLayer,
-    QgsRectangle,
-)
+from qgis.core import (Qgis, QgsCoordinateReferenceSystem, QgsFieldProxyModel,
+                       QgsGeometry, QgsMapLayerProxyModel, QgsProject,
+                       QgsRasterLayer, QgsRectangle)
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import QSettings, QSize, Qt, QTimer
 from qgis.PyQt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QCheckBox, QDialog, QFileDialog
 from qgis.utils import plugins
-from threedi_mi_utils import LocalRevision, LocalSchematisation, list_local_schematisations
+from threedi_mi_utils import (LocalRevision, LocalSchematisation,
+                              list_local_schematisations)
 
-from lizard_qgis_plugin.utils import (
-    RASTER_FALLBACK_RESOLUTION,
-    WMSServiceException,
-    add_layer_to_group,
-    count_rasters_with_name,
-    count_scenarios_with_name,
-    create_tree_group,
-    find_rasters,
-    get_capabilities_layer_uris,
-    get_url_raster_instance,
-    reproject_geometry,
-    try_to_write,
-    unify_spatial_boundaries,
-)
-from lizard_qgis_plugin.workers import RasterDownloader, ScenarioItemsDownloader
+from lizard_qgis_plugin.utils import (RASTER_FALLBACK_RESOLUTION,
+                                      WMSServiceException, add_layer_to_group,
+                                      count_rasters_with_name,
+                                      count_scenarios_with_name,
+                                      create_tree_group, find_rasters,
+                                      get_capabilities_layer_uris,
+                                      get_url_raster_instance,
+                                      reproject_geometry, try_to_write,
+                                      unify_spatial_boundaries)
+from lizard_qgis_plugin.workers import (RasterDownloader,
+                                        ScenarioItemsDownloader)
 
 base_dir = os.path.dirname(__file__)
 lizard_uicls, lizard_basecls = uic.loadUiType(os.path.join(base_dir, "ui", "lizard.ui"))
@@ -222,9 +212,6 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
             return download_dir
         try:
             import threedi_models_and_simulations.api_calls.threedi_calls as tc
-            import threedi_models_and_simulations.deps.custom_imports as ci
-
-            ci.patch_wheel_imports()
             threedi_models_and_simulations = plugins["threedi_models_and_simulations"]
         except (AttributeError, ImportError):
             return download_dir

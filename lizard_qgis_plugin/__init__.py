@@ -5,21 +5,12 @@ import os.path
 from qgis.PyQt.QtCore import QThreadPool
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
+from threedi_scenario_downloader import downloader
 
 from lizard_qgis_plugin.communication import UICommunication
-from lizard_qgis_plugin.deps.custom_imports import patch_wheel_imports
 from lizard_qgis_plugin.utils import count_scenarios_with_name
+from lizard_qgis_plugin.widgets.lizard_archive_browser import LizardBrowser
 from lizard_qgis_plugin.widgets.settings import SettingsDialog
-
-try:
-    from threedi_scenario_downloader import downloader
-
-    from lizard_qgis_plugin.widgets.lizard_archive_browser import LizardBrowser
-except ImportError:
-    patch_wheel_imports()
-    from threedi_scenario_downloader import downloader
-
-    from lizard_qgis_plugin.widgets.lizard_archive_browser import LizardBrowser
 
 
 def classFactory(iface):
