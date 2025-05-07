@@ -1,6 +1,7 @@
 History
 =======
-Unreleased
+
+0.4.2 (2025-05-07)
 -------------------
 - Use NenS Dependency Loader plugin instead of bundling pip dependencies
 
