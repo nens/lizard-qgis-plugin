@@ -90,6 +90,16 @@ class RasterDownloadSettings(download_settings_uicls, download_settings_basecls)
                     raster_resolution if raster_resolution else RASTER_FALLBACK_RESOLUTION
                 )
 
+                raster_no_data = raster_instance["fill_value"]
+                raster_dtype = raster_instance["dtype"]
+                if raster_dtype in ("u1", "u2", "u4", "i2", "i4"):
+                    self.no_data_sbox_raster.setDecimals(0)
+                    if raster_no_data is not None:
+                        self.no_data_sbox_raster.setValue(int(raster_no_data))
+                else:
+                    if raster_no_data is not None:
+                        self.no_data_sbox_raster.setValue(float(raster_no_data))
+
 
 class LizardBrowser(lizard_uicls, lizard_basecls):
     TABLE_LIMIT = 25
@@ -574,6 +584,12 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         download_dir = download_settings_dlg.output_dir_raster.filePath()
         raster_name = download_settings_dlg.filename_le_raster.text()
         no_data = download_settings_dlg.no_data_sbox_raster.value()
+        raster_dtype = raster_instance["dtype"]
+        if raster_dtype in ("u1", "u2", "u4", "i2", "i4"):
+            no_data = int(no_data)
+        else:
+            no_data = float(no_data)
+
         resolution = download_settings_dlg.pixel_size_sbox_raster.value()
         resolution = resolution if resolution else None
         projection = download_settings_dlg.crs_widget_raster.crs().authid()
