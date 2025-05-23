@@ -1,7 +1,7 @@
 History
 =======
 
-0.4.3 (unreleased)
+0.4.3 (2025-05-23)
 
 - When downloading a raster, the no_data value is converted to integer if required.
 
