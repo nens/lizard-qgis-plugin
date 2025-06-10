@@ -1,12 +1,19 @@
 History
 =======
 
+0.4.4 (2025-06-10)
+
+- Bumped NenS Dependency Loader
+
+
 0.4.3 (2025-05-23)
 
 - When downloading a raster, the no_data value is converted to integer if required.
 
+
 0.4.2 (2025-05-07)
 -------------------
+
 - Use NenS Dependency Loader plugin instead of bundling pip dependencies
 
 
