@@ -1,12 +1,19 @@
 History
 =======
+0.4.5 (unreleased)
+-------------------
+
+- Bump Dependency Loader plugin version to 1.2.1 (nens/nens-dependency-loader#14)
+
 
 0.4.4 (2025-06-10)
+-------------------
 
 - Bumped NenS Dependency Loader
 
 
 0.4.3 (2025-05-23)
+-------------------
 
 - When downloading a raster, the no_data value is converted to integer if required.
 
