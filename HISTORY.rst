@@ -1,6 +1,10 @@
 History
 =======
 
+0.4.7 (2025-08-28)
+
+- Minor refactor to correctly restart N&S Dependency Loader.
+
 0.4.6 (2025-08-24)
 -------------------
 
