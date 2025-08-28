@@ -1,5 +1,12 @@
 History
 =======
+
+0.4.6 (2025-08-24)
+-------------------
+
+- Prevent N&S Dependency Loader from getting disabled (nens/nens-dependency-loader#19)
+  
+
 0.4.5 (2025-07-17)
 -------------------
 
