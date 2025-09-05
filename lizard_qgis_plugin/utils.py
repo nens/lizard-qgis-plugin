@@ -398,7 +398,7 @@ def layer_to_gpkg(layer, gpkg_filename, overwrite=False, driver_name="GPKG"):
     transform_context = QgsProject.instance().transformContext()
     options = QgsVectorFileWriter.SaveVectorOptions()
     options.actionOnExistingFile = (
-        QgsVectorFileWriter.CreateOrOverwriteLayer if overwrite is False else QgsVectorFileWriter.CreateOrOverwriteFile
+        QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteLayer if overwrite is False else QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteFile
     )
     fields = layer.fields()
     valid_indexes = [fields.lookupField(fname) for fname in fields.names() if fname != "fid"]
