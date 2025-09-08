@@ -40,8 +40,8 @@ class RasterDownloadSettings(download_settings_uicls, download_settings_basecls)
         super().__init__(parent)
         self.setupUi(self)
         self.lizard_browser = lizard_browser
-        self.clip_polygon_cbo.setFilters(QgsMapLayerProxyModel.PolygonLayer)
-        self.clip_name_field_cbo.setFilters(QgsFieldProxyModel.String)
+        self.clip_polygon_cbo.setFilters(QgsMapLayerProxyModel.Filter.PolygonLayer)
+        self.clip_name_field_cbo.setFilters(QgsFieldProxyModel.Filter.String)
         self.output_dir_raster.fileChanged.connect(self.on_output_dir_changed)
         self.use_polygon_extent_rb.toggled.connect(self.on_extent_changed)
         self.clip_polygon_cbo.layerChanged.connect(self.on_polygon_changed)
@@ -146,14 +146,14 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         self.fetch_rasters()
         self.resize(QSize(1600, 850))
 
-    def log_feedback(self, feedback_message, level=Qgis.Info):
+    def log_feedback(self, feedback_message, level=Qgis.MessageLevel.Info):
         """Log messages in the feedback list view."""
-        if level == Qgis.Info:
-            color = QColor(Qt.darkGreen)
-        elif level == Qgis.Warning:
-            color = QColor(Qt.darkYellow)
+        if level == Qgis.MessageLevel.Info:
+            color = QColor(Qt.GlobalColor.darkGreen)
+        elif level == Qgis.MessageLevel.Warning:
+            color = QColor(Qt.GlobalColor.darkYellow)
         else:
-            color = QColor(Qt.red)
+            color = QColor(Qt.GlobalColor.red)
         brush = QBrush(color)
         feedback_item = QStandardItem(feedback_message)
         feedback_item.setForeground(brush)
@@ -361,7 +361,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
                     layers_to_add.append(layer)
             except WMSServiceException as e:
                 error_message = f"Loading of the requested scenario WMS layers failed due to following error:\n{e}"
-                self.log_feedback(error_message, Qgis.Critical)
+                self.log_feedback(error_message, Qgis.MessageLevel.Critical)
                 self.plugin.communication.show_error(error_message)
                 return
             scenario_group = create_tree_group(scenario_name)
@@ -408,7 +408,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         projection = target_crs.authid()
         if not rasters_to_download and not raw_results_to_download:
             warn_message = "No items checked - please select items to download and try again."
-            self.log_feedback(warn_message, Qgis.Warning)
+            self.log_feedback(warn_message, Qgis.MessageLevel.Warning)
             return
         # Adjust scenario instance spatial boundaries to the selected CRS (if necessary)
         scenario_instance_epsg = scenario_instance["projection"]
@@ -457,7 +457,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         """Feedback on download failed signal."""
         self.plugin.communication.clear_message_bar()
         self.plugin.communication.bar_error(error_message)
-        self.log_feedback(error_message, Qgis.Critical)
+        self.log_feedback(error_message, Qgis.MessageLevel.Critical)
 
     def search_for_rasters(self):
         """Method used for searching rasters with text typed withing search bar."""
@@ -552,7 +552,7 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
                     layers_to_add.append(layer)
             except WMSServiceException as e:
                 error_message = f"Loading of the requested raster WMS layers failed due to following error:\n{e}"
-                self.log_feedback(error_message, Qgis.Critical)
+                self.log_feedback(error_message, Qgis.MessageLevel.Critical)
                 self.plugin.communication.show_error(error_message)
                 return
             raster_group = create_tree_group(raster_name)
@@ -573,8 +573,8 @@ class LizardBrowser(lizard_uicls, lizard_basecls):
         if not index.isValid():
             return
         download_settings_dlg = RasterDownloadSettings(self)
-        res = download_settings_dlg.exec_()
-        if res != QDialog.Accepted:
+        res = download_settings_dlg.exec()
+        if res != QDialog.DialogCode.Accepted:
             self.raise_()
             return
         current_row = index.row()
