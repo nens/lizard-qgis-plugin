@@ -1,14 +1,24 @@
 History
 =======
 
+0.4.10 (2025-11-18)
+------------------
+
+- Bump dependency loader to 1.2.5.
+
+
 0.4.8 (2025-09-08)
+------------------
 
 - Prepared plugin for QGIS 4.0.
 - Bumped Dependency Loader.
 
+
 0.4.7 (2025-08-28)
+------------------
 
 - Minor refactor to correctly restart N&S Dependency Loader.
+
 
 0.4.6 (2025-08-24)
 -------------------
